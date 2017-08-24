@@ -76,6 +76,8 @@ OverlapSave::OverlapSave(int inSampleRate, int outSampleRate, QObject *parent) :
     mix_phase = 0 ;
     ttl_put = ttl_read = 0 ;
     apply_postmixer = false ;
+    m_band_start = 0 ;
+    m_band_bins = 0 ;
 }
 
 void OverlapSave::reset() {
@@ -111,12 +113,14 @@ void OverlapSave::setCenterOfWindow( float freq ) {
 
     if( OLAS_DEBUG ) qDebug() << "OverlapSave::setCenterOfWindow() freq = " << freq ;
     float bin_width = m_inSampleRate / fft_size ;
+
     if( fabs(freq) < bin_width ) {
         memcpy( (void *)_H, (void *)_H0, fft_size*sizeof(fftwf_complex) ) ;
         m_center_freq = 0 ;
         mix_phase = 0 ;
         mix_offset = 0 ;
         apply_postmixer = false ;
+        m_band_start = fft_size - (int)floorf( m_outSampleRate/(2*bin_width) );
         return ;
     }
 
@@ -124,7 +128,7 @@ void OverlapSave::setCenterOfWindow( float freq ) {
 
     int decal = (int)floorf( freq / bin_width );
     mix_phase = 0 ;
-    mix_offset = -freq/m_inSampleRate*2*M_PI ; // (decal * bin_width + 571.4022)/m_inSampleRate*2*M_PI ; //
+    mix_offset = -freq/m_inSampleRate*2*M_PI ; //
     apply_postmixer = true ;
 
     for( int i=0 ; i < fft_size ; i++ ) {
@@ -137,7 +141,10 @@ void OverlapSave::setCenterOfWindow( float freq ) {
     }
 
     memcpy( (void *)_H, (void *)tmp, fft_size*sizeof(fftwf_complex) ) ;
-
+    m_band_start = (int)floorf( ( freq - m_outSampleRate/2 )/bin_width) ;
+    if( m_band_start < 0 ) {
+        m_band_start += fft_size/2 ;
+    }
     // sauvegarder le filtre pour debug matlab
     if( DEBUG_MATLAB ) {
         FILE* fw = fopen( "filter_taps_dec.dat", "wb");
@@ -246,6 +253,13 @@ void OverlapSave::configure( int maxInSize , int use_fft_size ) {
     wr_pos = overlap ;
     memset( (void *)datas_in, 0, data_size * sizeof(TYPECPX));
     apply_postmixer = false ;
+
+    float bin_width = m_inSampleRate / fft_size ;
+    // estimate the fft bins of our band.
+    // Warning... using fftw -> positive spectrum is [0...N/2[ and negative [N/2...N]
+    m_band_start = fft_size - (int)floorf( m_outSampleRate/(2*bin_width) ); ;
+    m_band_bins  = (int)floorf( m_outSampleRate / bin_width );
+
     if( OLAS_DEBUG ) qDebug() << "OverlapSave::configure() finished" ;
 }
 
@@ -308,15 +322,17 @@ void OverlapSave::shiftOutputCenterFrequency( float offset_hz ) {
 // Faire la FFT d'un bloc de signal d'entree
 // puis avancer de la longeur de la FFT - la longeur du filtre
 void OverlapSave::step1() {
-//    int i ;
     long buff_len = wr_pos - rd_pos ;
     TYPECPX* r = datas_in ;
+
 
     while( buff_len >= fft_size) {
         // recopier dans buffer d'entree FFT les données temporelle 'in'
         memcpy( (void *)fftin, (void *)datas_in, fft_size * sizeof(TYPECPX));
         // calculer la FFT du signal
         fftwf_execute( plan );
+
+
 
         // repositionner le buffer interne : décalage
         buff_len = wr_pos - fft_size + overlap ;
@@ -342,12 +358,23 @@ void OverlapSave::step1() {
  * permet de gagner du temps : on ne mixe que les données sorties, pas tout
  */
 void OverlapSave::step2() {
+    // float power ;
     double tmp_phase ;
     long i,p ;
 
     if( out_wpos >= data_size ) {
         return ;
     }
+
+    // estimation puissance dans la sous bande utile
+//    power = 0 ;
+//    for( i=0 ; i < m_band_bins ; i++ ) {
+//         p = (m_band_start+i) % fft_size ;
+//         float I = fftin[p][0] ;
+//         float Q = fftin[p][1] ;
+//         power += sqrtf( I*I + Q*Q );
+//    }
+//    power /= m_band_bins ;
 
     // produit fft(filtre) .* fft( signal )
     for( i=0 ; i < fft_size ; i++ ) {
@@ -428,6 +455,13 @@ int OverlapSave::get( TYPECPX *data , int max_read, int min_read) {
     }
     ttl_read += max_read ;
     return( max_read );
+}
+
+void OverlapSave::pushback( TYPECPX* data, int count ) {
+    int i = 0 ;
+    while( count-- && (out_wpos < data_size) ) {
+        datas_out[out_wpos++] = data[i++] ;
+    }
 }
 
 //#define K_PI (3.14159265358979323846)

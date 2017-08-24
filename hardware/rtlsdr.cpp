@@ -165,7 +165,7 @@ RTLSDR::RTLSDR( int select_index)
     m_stop = false ;
 
     setRxSampleRate();
-    setRTLGain(30);
+    setRTLGain(10);
     setRxCenterFreq(min_tuner_freq+10e6) ;
 
     pthread_create(&receive_thread, NULL, acquisition_thread, this );
@@ -305,7 +305,9 @@ int RTLSDR::processData( unsigned char *buf, uint32_t len ) {
           OutBuf[i].im = tmp.im ;
       }
 
-      fifo->EnqueueData( (void *)OutBuf, len/2, 0, NULL );
+      if( fifo->EnqueueData( (void *)OutBuf, len/2, 0, NULL ) < 0 ) {
+          qDebug() << "RTLSR::processData() problem - queue full ???" ;
+      }
       return( (int)len/2 ) ;
 }
 

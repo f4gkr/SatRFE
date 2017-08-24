@@ -161,7 +161,7 @@ void Controller::run() {
             }
             processor->raz();
             channelizer->reset();
-            channelizer->setCenterOfWindow( FRAME_CENTER );
+            channelizer->setCenterOfWindow( FRAME_OFFSET_LOW + DEMODULATOR_SAMPLERATE/2 );
             if( radio->startAcquisition() == 1 ) {
                 next_state = Controller::csRun ;
             }
@@ -174,6 +174,7 @@ void Controller::run() {
             }
             samples = (TYPECPX *)fifo->DequeueData( &sample_count, 0,  NULL, true );
             if( (samples == NULL ) || (sample_count==0)) {
+                qDebug() << "Controller::run()  sample_count==0" ;
                 continue ;
             }
             process( samples, sample_count );
@@ -192,7 +193,7 @@ void Controller::run() {
 void Controller::process( TYPECPX*samples, int L ) {
     TYPECPX* pt = samples ;
     TYPECPX out[STEP_SIZE] ;
-    int rc ;
+    int rc,pushback_samples ;
     int left = L ;
 
     //qDebug() << "Controller::process() L=" << L ;
@@ -214,7 +215,13 @@ void Controller::process( TYPECPX*samples, int L ) {
         if( rc == GET_DATA_OUT ) {
             rc = channelizer->get( out, STEP_SIZE, PREAMBLE_LENGTH )  ;
             while( rc > 0 ) {
-                processor->newData( out, rc, channelizer->getOLASOutSampleRate() );
+                pushback_samples = processor->newData( out, rc, channelizer->getOLASOutSampleRate() );
+                if( pushback_samples ) {
+                    // rc is number of samples to pushback
+                    TYPECPX *tmp = &out[0] ;
+                    tmp += rc - 1 - pushback_samples ; // shift pointer
+                    channelizer->pushback( tmp, pushback_samples );
+                }
                 rc = channelizer->get( out, STEP_SIZE , PREAMBLE_LENGTH)  ;
             }
         }
@@ -273,12 +280,7 @@ void  Controller::getSpectrum( double* values ) {
 }
 
 void Controller::SLOT_powerLevel( float level )  {
-    static int cnt = 10 ;
-    cnt-- ;
-    if( cnt == 0 ) {
-        emit powerLevel(level);
-        cnt = 10 ;
-    }
+    emit powerLevel(level);
 }
 
 

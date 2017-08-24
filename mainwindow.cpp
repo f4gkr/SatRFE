@@ -35,11 +35,13 @@
 #include <QApplication>
 #include <QLabel>
 #include <QPalette>
+#include <QMessageBox>
 #include <stdint.h>
 
 #include "core/controller.h"
 #include "hardware/gpdsd.h"
-
+#include "common/QLogger.h"
+#include "common/constants.h"
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -84,7 +86,7 @@ MainWindow::MainWindow(QWidget *parent)
     cb_layout->setContentsMargins( 1,1,1,1);
 
     plot = new SpectrumPlot();
-    plot->setMinMaxScales( -80, -30 );
+    plot->setMinMaxScales( -90, -50 );
     plot->setMinimumHeight( 100 );
     cb_layout->addWidget( plot );
 
@@ -98,11 +100,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     gain_rx = new gkDial(4,tr("RF Gain"));
     gain_rx->setScale(0,40);
+    gain_rx->setValue(10);
     cllayout->addWidget(gain_rx);
 
     detection_threshold= new gkDial(4,tr("Threshold"));
-    detection_threshold->setScale(5,40);
-    detection_threshold->setValue(30);
+    detection_threshold->setScale(2,20);
+    detection_threshold->setValue(DEFAULT_DETECTION_THRESHOLD);
     cllayout->addWidget(detection_threshold);
 
     zuluDisplay = new QLCDNumber(11);
@@ -166,7 +169,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Create the bands showing the received portion
     seg_rx = new SpectrumSegment("DATA");
     seg_rx->setColor( Qt::green   );
-    seg_rx->setInterval( FRAME_OFFSET_LOW/1e6, FRAME_OFFSET_HIGH/1e6 );
+    seg_rx->setInterval( FRAME_OFFSET_LOW/1e6, (FRAME_OFFSET_LOW +  DEMODULATOR_SAMPLERATE)/1e6 );
     seg_rx->setVisible( true );
     seg_rx->attach( plot );
 
@@ -185,7 +188,7 @@ MainWindow::MainWindow(QWidget *parent)
     levelplot->xAxis->setLabel(tr("Frame"));
     levelplot->yAxis->setLabel("Level");
     levelplot->xAxis->setRange(0, 1);
-    levelplot->yAxis->setRange(-70, -30);
+    levelplot->yAxis->setRange(-70, -50);
     levelplot->setMinimumHeight(150);
     levelplot->addGraph();
     levelplot->graph(1)->setPen(QPen(Qt::red));
@@ -199,8 +202,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     setCentralWidget(center_widget);
     // resize
-    QDesktopWidget *desktop = QApplication::desktop();
-    resize( desktop->availableGeometry(this).size() * .7 );
+    //QDesktopWidget *desktop = QApplication::desktop();
+    //resize( desktop->availableGeometry(this).size() * .7 );
 
     connect( startButton, SIGNAL(pressed()), this, SLOT(SLOT_startPressed()));
     connect( stopButton, SIGNAL(pressed()), this, SLOT(SLOT_stopPressed()));
@@ -240,7 +243,7 @@ void MainWindow::SLOT_userTunesFreqWidget(qint64 newFrequency) {
     plot->razMaxHold();
 
     double fmin = (double)newFrequency + FRAME_OFFSET_LOW ;
-    double fmax = (double)newFrequency + FRAME_OFFSET_HIGH ;
+    double fmax = (double)newFrequency + FRAME_OFFSET_LOW +  DEMODULATOR_SAMPLERATE;
 
     seg_rx->setInterval(  fmin/1e6, fmax/1e6);
 
@@ -250,7 +253,7 @@ void MainWindow::SLOT_userTunesFreqWidget(qint64 newFrequency) {
 
 // start SDR pressed
 void MainWindow::SLOT_startPressed() {
-   qint64 newFrequency = 144832000 - 55000 ; //439795000 ;
+   qint64 newFrequency = 436470.8e3;
    Controller& ctrl = Controller::getInstance() ;
 
     if( radio == NULL )
@@ -263,7 +266,7 @@ void MainWindow::SLOT_startPressed() {
     mainFDisplay->resetToFrequency(  newFrequency );
     plot->setNewParams(  newFrequency, radio->getRxSampleRate() ) ;
     double fmin = (double)newFrequency + FRAME_OFFSET_LOW ;
-    double fmax = (double)newFrequency + FRAME_OFFSET_HIGH ;
+    double fmax = (double)newFrequency + FRAME_OFFSET_LOW +  DEMODULATOR_SAMPLERATE;
     seg_rx->setInterval(  fmin/1e6, fmax/1e6);
 
     ctrl.setRxCenterFrequency( newFrequency  );
@@ -284,7 +287,7 @@ void MainWindow::SLOT_stopPressed() {
 void MainWindow::SLOT_newSpectrum( int len , double smin,  double smax ) {
     double power_dB[len] ;
     float bw ;
-    //bool rescale = false ;
+    //bool rescale = false ;setRTLGain
 
     uint64_t rx_center_frequency = radio->getRxCenterFreq() ;
     bw = radio->getRxSampleRate() ;
@@ -314,7 +317,7 @@ void MainWindow::SLOT_newSpectrum( int len , double smin,  double smax ) {
 
     plot->setPowerTab(rx_center_frequency, power_dB,  len, bw );
     double fmin = (double)rx_center_frequency + FRAME_OFFSET_LOW ;
-    double fmax = (double)rx_center_frequency +  FRAME_OFFSET_HIGH ;
+    double fmax = (double)rx_center_frequency +  FRAME_OFFSET_LOW +  DEMODULATOR_SAMPLERATE ;
     seg_rx->setInterval(  fmin/1e6, fmax/1e6);
 }
 

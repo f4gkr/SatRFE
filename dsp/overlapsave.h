@@ -56,6 +56,7 @@ public:
     void configure(int maxInSize , int use_fft_size );
     int put(TYPECPX *insamples, int length );
     int get(TYPECPX *data , int max_read=-1, int min_read=-1);
+    void pushback( TYPECPX* data, int count );
 
     void setCenterOfWindow( float freq );
     float getCenterOfWindow();
@@ -80,6 +81,8 @@ private:
     int NTaps ;
     int fft_size ;
     float m_center_freq ;
+    int m_band_start ;
+    int m_band_bins ;
     double mix_offset ;
     double mix_phase ;
     bool apply_postmixer;

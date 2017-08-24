@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <QDebug>
 #include <math.h>
-
+#include <stdio.h>
 #include "common/constants.h"
 
 //-- Class SampleBlock
@@ -59,7 +59,7 @@ void SampleBlock::markAsLastBlock() {
 FrameProcessor::FrameProcessor(QObject *parent) : QObject(parent)
 {
     m_bandwidth = 0 ;
-    detection_threshold = 30 ;
+    detection_threshold = DEFAULT_DETECTION_THRESHOLD ;
     noise_floor = 0 ;
     m_state = next_state = FrameProcessor::sInit ;
     queueSampleCount = 0 ;
@@ -67,12 +67,15 @@ FrameProcessor::FrameProcessor(QObject *parent) : QObject(parent)
 
 void FrameProcessor::setDetectionThreshold(float level) {
     detection_threshold = level ;
+    threshold = noise_floor + detection_threshold ;
+    qDebug() << " noise level was " << noise_floor ;
+    qDebug() << " threshold is now " << threshold ;
 }
 
 
 
 void FrameProcessor::raz() {
-    flushQueue();
+    flushQueue(0);
     next_state = sInit ;
 }
 
@@ -87,12 +90,14 @@ QString FrameProcessor::stateToS(int s) {
     return("");
 }
 
-void FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
+int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
     int length ;
     float v ;
     TYPECPX* start = IQsamples ;
     int remaining_samples = L ;
     SampleBlock *sb ;
+
+    //qDebug() << "FrameProcessor::newData()" << L ;
 
     while( remaining_samples > 0 ) {
         if( next_state != m_state ) {
@@ -111,38 +116,59 @@ void FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
 
             // estimate noise level
         case sMeasureNoise:
-            length = remaining_samples ;
-            if( length > samples_for_powerestimation )
-                length = samples_for_powerestimation ;
-            rms_power += rmsp( IQsamples, length );
-            samples_for_powerestimation -= length ;
+            if( remaining_samples >= PREAMBLE_LENGTH ) {
+                samples_for_powerestimation -= PREAMBLE_LENGTH ;
+                if( samples_for_powerestimation > 0 ) {
+                    v = rmsp( start, PREAMBLE_LENGTH ) ;
+                    emit powerLevel(v);
+                    rms_power += v ;
+                    start += PREAMBLE_LENGTH ;
+                    remaining_samples -= PREAMBLE_LENGTH ;
 
-            if( samples_for_powerestimation <= 0 ) {
-                noise_floor = (float)20*log10(sqrt( 1.0/(2*sampleRate) * rms_power ));
-                threshold = noise_floor + detection_threshold ;
-                next_state = sSearchFrame ;
+                } else {
+                    rms_power /= (2*sampleRate/PREAMBLE_LENGTH) ; // how many times we accumulated power
+                    noise_floor = rms_power ;
+                    threshold = noise_floor + detection_threshold ;
+                    next_state = sSearchFrame ;
+
+                    qDebug() << " noise level is set to " << noise_floor ;
+                    qDebug() << " threshold is " << threshold ;
+                }
+            } else {
+                return(remaining_samples);
             }
-            remaining_samples -= length ;
             break ;
 
         case sSearchFrame:
             if( remaining_samples >= PREAMBLE_LENGTH ) {
-                v = rmsp( start, PREAMBLE_LENGTH, false ) ;
-
+                v = rmsp( start, PREAMBLE_LENGTH ) ;
+                //qDebug() << v << threshold ;
                 emit powerLevel(v);
                 if( v >= threshold ) {
                     // considered block contains enough energy (RMS(block) > (noise level + threshold)
                     // start to queue samples
-                    queueSampleCount = PREAMBLE_LENGTH ;
-                    SampleBlock *sb = new SampleBlock( start, PREAMBLE_LENGTH );
-                    queue.enqueue( sb );
+
+                    if( (L-remaining_samples) > 5*PREAMBLE_LENGTH ) {
+                        TYPECPX* cstart = start ;
+                        cstart -= 4*PREAMBLE_LENGTH ;
+                        SampleBlock *sb = new SampleBlock( cstart, 5*PREAMBLE_LENGTH );
+                        queue.enqueue( sb );
+                        queueSampleCount = 5*PREAMBLE_LENGTH ;
+
+                        qDebug() << " data with back" ;
+
+                    } else {
+                        SampleBlock *sb = new SampleBlock( start, PREAMBLE_LENGTH );
+                        queue.enqueue( sb );
+                        queueSampleCount = PREAMBLE_LENGTH ;
+                    }
                     next_state = sFrameStart ;
                     emit frameDetected( v ) ;
                 }
                 start += PREAMBLE_LENGTH ;
                 remaining_samples -= PREAMBLE_LENGTH ;
             } else {
-                remaining_samples = 0 ; // todo : pushback the remaining samples in case frame starts here
+                return(remaining_samples);
             }
             break ;
 
@@ -152,9 +178,9 @@ void FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
             length = queueSampleCount / DEMODULATOR_SAMPLERATE ; // int number of seconds in queue
             if( length > MAXSECONDS_IN_QUEUE ) {
                 // not normal ? maybe level is wrong
-                flushQueue();
+                flushQueue(queueSampleCount);
                 next_state = sMeasureNoise ;
-                return ;
+                return(0) ;
             }
 
             // put block in queue
@@ -162,7 +188,7 @@ void FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
             sb = new SampleBlock( start, remaining_samples );
             queue.enqueue( sb );
 
-            v = rmsp( start, remaining_samples, false ) ;
+            v = rmsp( start, remaining_samples ) ;
             emit powerLevel(v);
             remaining_samples = 0 ;
 
@@ -172,7 +198,7 @@ void FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
             // check what is the power level at the end of the block
             if( queueSampleCount > MINFRAME_LENGTH ) {
                 start = IQsamples + L - PREAMBLE_LENGTH ;
-                v = rmsp( start, PREAMBLE_LENGTH, false ) ;
+                v = rmsp( start, PREAMBLE_LENGTH ) ;
                 if( v < threshold ) {
                     sb->markAsLastBlock(); // this is the end of the sequence
                     next_state = sFrameEnds ;
@@ -182,31 +208,55 @@ void FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
             break ;
 
         case sFrameEnds:
-            flushQueue();
+            flushQueue(queueSampleCount);
+            queueSampleCount = 0 ;
             next_state = sSearchFrame ;
             break ;
 
         }
     }
+    return(0) ;
 }
 
 
-float FrameProcessor::rmsp( TYPECPX *samples, int L, bool partial ) {
+float FrameProcessor::rmsp( TYPECPX *samples, int L ) {
     float res = 0 ;
     int k = 0 ;
     for( k=0 ; k < L ; k++ ) {
         res += samples[k].re*samples[k].re + samples[k].im*samples[k].im ;
     }
-    if( !partial)
-        res = 20*log10(sqrtf( 1.0/L * res ));
+    res = 20*log10(sqrtf( 1.0/L * res ));
     return(res);
 }
 
-void FrameProcessor::flushQueue() {
-    while( !queue.isEmpty() ) {
+void FrameProcessor::flushQueue(int L) {
+    int saved_count = 0 ;
+    size_t bytes = 0 ;
+    char filename[255] ;
+    static int file_counter = 0 ;
+    FILE* data ;
+
+    if( L == 0 ) {
+        while( !queue.isEmpty() ) {
+            SampleBlock *b = queue.dequeue() ;
+            delete b ;
+        }
+        return ;
+    }
+
+    sprintf( filename, "/home/picsat/SatRFE/data/frame%d.dat", file_counter++ );
+    data = fopen( filename, "wb");
+    bytes = fwrite(  &L, sizeof(int),1, data);
+
+    while( !queue.isEmpty() && (saved_count<L)) {
         SampleBlock *b = queue.dequeue() ;
+        TYPECPX *samples = b->getData() ;
+        saved_count += b->getLength() ;
+        bytes += fwrite( samples, 1, b->getLength()*sizeof(TYPECPX), data);
         delete b ;
     }
+    qDebug() << "saved " << saved_count << " samples, size=" << saved_count*sizeof(TYPECPX) << bytes ;
+    fclose( data );
 }
 
 //Normalize to [-180,180):

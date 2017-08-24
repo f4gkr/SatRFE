@@ -40,12 +40,15 @@ public:
     ~SampleBlock();
 
     void markAsLastBlock();
-
+    TYPECPX *getData() { return( memory ) ; }
+    int getLength() { return( mSize ) ; }
 private:
     TYPECPX *memory ;
     int mSize ;
     bool lastBlock ;
 };
+
+#define DEFAULT_DETECTION_THRESHOLD (10)
 
 class FrameProcessor : public QObject
 {
@@ -59,7 +62,7 @@ public:
     void setDetectionThreshold(float level);
 
     // call this function each time a paquet of samples is available
-    void newData(TYPECPX* IQsamples, int L , int sampleRate );
+    int newData(TYPECPX* IQsamples, int L , int sampleRate );
 
     void raz();
 
@@ -88,10 +91,10 @@ private:
     double rms_power ;
     long samples_for_powerestimation ;
 
-    float rmsp(TYPECPX *samples, int L , bool partial=true);
+    float rmsp(TYPECPX *samples, int L );
 
     QString stateToS(int s);
-    void flushQueue();
+    void flushQueue(int L);
     void writeQueueToFile( QString filename, long samples );
 };
 

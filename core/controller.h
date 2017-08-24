@@ -38,17 +38,7 @@
 #include "hardware/rtlsdr.h"
 #include "dsp/overlapsave.h"
 #include "dsp/frameprocessor.h"
-/**
-  In current version the frame is 100 KHz wide
-  we sample 110 Khz. To avoid RX Dc at center, RX windows is 10 K above rx center
-  example : RTLSDR rx center at 430.000
-  window starts at 430.010
-                center at 430.065
-                   ends at 430.120
-  */
-#define FRAME_CENTER (10e3 + 55e3)
-#define FRAME_OFFSET_LOW 10e3
-#define FRAME_OFFSET_HIGH 120e3
+
 
 class Controller : public QThread
 {
