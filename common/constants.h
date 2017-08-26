@@ -32,13 +32,23 @@
 #define LOGGER_NAME  "PicsatRFE"
 #define LOGGER_FILENAME "picsatrfe.log"
 #define VER_PRODUCTNAME_STR "picsatrfe"
+/**
+  In current version the frame is 100 KHz wide
+  we sample 110 Khz. To avoid RX Dc at center, RX windows is 10 K above rx center
+  example : RTLSDR rx center at 430.000
+  window starts at 430.010
+                center at 430.065
+                   ends at 430.120
+  */
+#define FRAME_OFFSET_LOW 10e3
 
 #define SYMBOL_RATE 9600 /* picsat modem bitrate */
-#define DEMODULATOR_SAMPLERATE (9600*4) /* baseband sample rate */
-#define PREAMBLE_LENGTH (4*56)
+#define OVERSAMPLE_RATIO (4)
+#define DEMODULATOR_SAMPLERATE (9600*OVERSAMPLE_RATIO) /* baseband sample rate */
+#define PREAMBLE_LENGTH (OVERSAMPLE_RATIO*10*8)
 #define BASEBAND_BLOCK_SIZE (SYMBOL_RATE)
 #define MAXSECONDS_IN_QUEUE (10)
-#define MINFRAME_LENGTH (4*1024)
+#define MINFRAME_LENGTH (OVERSAMPLE_RATIO*1024)
 #define RX_OFFSET (1e3) /* how far away from rx center we shift to avoid DC component */
 
 #define CONFIG_FILENAME "picsatrfe.conf"

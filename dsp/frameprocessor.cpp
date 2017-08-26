@@ -52,7 +52,7 @@ void SampleBlock::markAsLastBlock() {
     lastBlock = true ;
 }
 
-//
+//pushback
 
 
 
@@ -148,14 +148,12 @@ int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
                     // considered block contains enough energy (RMS(block) > (noise level + threshold)
                     // start to queue samples
 
-                    if( (L-remaining_samples) > 5*PREAMBLE_LENGTH ) {
+                    if( (L-remaining_samples) > 0 ) {
                         TYPECPX* cstart = start ;
-                        cstart -= 4*PREAMBLE_LENGTH ;
-                        SampleBlock *sb = new SampleBlock( cstart, 5*PREAMBLE_LENGTH );
+                        cstart -= (L-remaining_samples) ;
+                        SampleBlock *sb = new SampleBlock( cstart, (L-remaining_samples) + PREAMBLE_LENGTH );
                         queue.enqueue( sb );
-                        queueSampleCount = 5*PREAMBLE_LENGTH ;
-
-                        qDebug() << " data with back" ;
+                        queueSampleCount = (L-remaining_samples) + PREAMBLE_LENGTH ;
 
                     } else {
                         SampleBlock *sb = new SampleBlock( start, PREAMBLE_LENGTH );
@@ -164,9 +162,13 @@ int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
                     }
                     next_state = sFrameStart ;
                     emit frameDetected( v ) ;
+                    start += PREAMBLE_LENGTH ;
+                    remaining_samples -= PREAMBLE_LENGTH ;
+
+                } else {
+                    start += PREAMBLE_LENGTH/2 ;
+                    remaining_samples -= PREAMBLE_LENGTH/2 ;
                 }
-                start += PREAMBLE_LENGTH ;
-                remaining_samples -= PREAMBLE_LENGTH ;
             } else {
                 return(remaining_samples);
             }
@@ -192,7 +194,7 @@ int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
             emit powerLevel(v);
             remaining_samples = 0 ;
 
-            qDebug() << "queueSampleCount=" << queueSampleCount ;
+            //qDebug() << "queueSampleCount=" << queueSampleCount ;
 
 
             // check what is the power level at the end of the block
@@ -231,9 +233,10 @@ float FrameProcessor::rmsp( TYPECPX *samples, int L ) {
 
 void FrameProcessor::flushQueue(int L) {
     int saved_count = 0 ;
+    int block_count = 0 ;
     size_t bytes = 0 ;
     char filename[255] ;
-    static int file_counter = 0 ;
+    static int file_counter = 250 ;
     FILE* data ;
 
     if( L == 0 ) {
@@ -254,9 +257,15 @@ void FrameProcessor::flushQueue(int L) {
         saved_count += b->getLength() ;
         bytes += fwrite( samples, 1, b->getLength()*sizeof(TYPECPX), data);
         delete b ;
+        block_count++ ;
     }
-    qDebug() << "saved " << saved_count << " samples, size=" << saved_count*sizeof(TYPECPX) << bytes ;
     fclose( data );
+
+    qDebug() << "----------------------------------------------------" ;
+    qDebug() << "file  :" << QString::fromLocal8Bit(filename );
+    qDebug() << "saved " << saved_count << " samples, size=" << saved_count*sizeof(TYPECPX) << bytes ;
+    qDebug() << "blocks :" << block_count ;
+
 }
 
 //Normalize to [-180,180):

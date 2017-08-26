@@ -48,7 +48,7 @@ private:
     bool lastBlock ;
 };
 
-#define DEFAULT_DETECTION_THRESHOLD (10)
+#define DEFAULT_DETECTION_THRESHOLD (4)
 
 class FrameProcessor : public QObject
 {

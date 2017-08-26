@@ -188,7 +188,7 @@ MainWindow::MainWindow(QWidget *parent)
     levelplot->xAxis->setLabel(tr("Frame"));
     levelplot->yAxis->setLabel("Level");
     levelplot->xAxis->setRange(0, 1);
-    levelplot->yAxis->setRange(-70, -50);
+    levelplot->yAxis->setRange(-70, -30);
     levelplot->setMinimumHeight(150);
     levelplot->addGraph();
     levelplot->graph(1)->setPen(QPen(Qt::red));
