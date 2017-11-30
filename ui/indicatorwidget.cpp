@@ -80,7 +80,10 @@ IndicatorWidget::IndicatorWidget(
 
     setMode( QwtDial::RotateNeedle ) ;
     setFrameShadow( QwtDial::Sunken );
+    setLowerBound( qMin(m_minValue, m_maxValue));
+    setUpperBound( qMax(m_minValue, m_maxValue) );
     QwtRoundScaleDraw *scaleDraw = new QwtRoundScaleDraw();
+
     scaleDraw->setSpacing( 8 );
     scaleDraw->enableComponent( QwtAbstractScaleDraw::Backbone, false );
     scaleDraw->setTickLength( QwtScaleDiv::MinorTick, 0 );
