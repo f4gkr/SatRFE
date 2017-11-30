@@ -27,7 +27,7 @@
 //or implied, of Sylvain AZARIAN F4GKR.
 //==========================================================================================
 #include <stdio.h>
-#include  <stdlib.h>
+#include <stdlib.h>
 #include <QDebug>
 #include "samplefifo.h"
 #define DEBUG (0)

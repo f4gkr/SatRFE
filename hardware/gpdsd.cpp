@@ -145,12 +145,19 @@ GPSD::~GPSD() {
 
 }
 
+void GPSD::processError( int errorCode ) {
+    if( errorCode == ERROR_NO_GPSD ) {
+        startLocalTimer();
+    }
+}
+
 void GPSD::startLocalTimer() {
     if( timer != NULL ) return ;
     QLogger::QLog_Error( LOGGER_NAME, "GPSD:: start local timer" );
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(SLOT_timer()));
     timer->start( 500.0 );
+    device_found = true ;
 }
 
 void GPSD::SLOT_timer() {
@@ -316,7 +323,7 @@ void GPSD::run() {
     } else {
         if( DEBUG_GPSD ) qDebug() << "GPSD::run() comm_port ? " << comm_port ;
         QLogger::QLog_Error( LOGGER_NAME, "GPSD::run() comm_port ? " );
-        startLocalTimer();
+        emit( hasError(ERROR_NO_GPSD)) ;
     }
 #else
     struct gps_data_t gps_data;
@@ -338,7 +345,6 @@ void GPSD::run() {
         if (!gps_waiting(&gps_data, 5000000)) {
             emit( hasError(ERROR_NO_GPSD)) ;
             gps_close(&gps_data);
-            startLocalTimer();
             return ;
             break ;
 

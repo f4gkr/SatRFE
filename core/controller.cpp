@@ -32,25 +32,29 @@
 #include "common/constants.h"
 
 #define STEP_SIZE 16384
-#define FFT_SPECTRUM 2048
+#define FFT_SPECTRUM_LEN 4096
 
 Controller::Controller() : QThread(NULL)
 {
     radio = NULL ;
+    webservice = NULL ;
     rx_center_frequency = 0 ;
+    rx_tune_request = 0 ;
     m_stop = false ;
     m_state = Controller::csInit ;
     channelizer = NULL ;
     processor = new FrameProcessor();
-    fftin = (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * FFT_SPECTRUM );
-    plan = fftwf_plan_dft_1d(FFT_SPECTRUM, fftin, fftin, FFTW_FORWARD, FFTW_ESTIMATE );
-    spectrum = (double *)malloc( FFT_SPECTRUM * sizeof(double));
-    hamming_coeffs = (double *)malloc( FFT_SPECTRUM * sizeof( double ));
-    memset( spectrum, 0, FFT_SPECTRUM );
+    fftin = (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * FFT_SPECTRUM_LEN );
+    plan = fftwf_plan_dft_1d(FFT_SPECTRUM_LEN, fftin, fftin, FFTW_FORWARD, FFTW_ESTIMATE );
+    spectrum = (double *)malloc( FFT_SPECTRUM_LEN * sizeof(double));
+    hamming_coeffs = (double *)malloc( FFT_SPECTRUM_LEN * sizeof( double ));
+    memset( spectrum, 0, FFT_SPECTRUM_LEN );
     semspectrum = new QSemaphore(1);
-    hamming_window( hamming_coeffs, FFT_SPECTRUM ) ;
+    hamming_window( hamming_coeffs, FFT_SPECTRUM_LEN ) ;
 
-    connect( processor, SIGNAL(powerLevel(float)), this, SLOT(SLOT_powerLevel(float)));
+    connect( processor, SIGNAL(powerLevel(float)), this, SLOT(SLOT_powerLevelChanged(float)));
+    connect( processor, SIGNAL(newState(QString)), this, SLOT(SLOT_frameDetectorStateChanged(QString)));
+    connect( processor, SIGNAL(newSNRThreshold(float)), this, SLOT(SLOT_FPSetsNewThreshold(float)));
 
     sempos = new QSemaphore(1);
     m_Latitude = m_Longitude = m_Altitude = 0 ;
@@ -78,12 +82,18 @@ void Controller::setRadio(RTLSDR *radio) {
     channelizer->configure( 128*1024, 16384 );
 }
 
-void Controller::setRxCenterFrequency(uint64_t frequency) {
-    this->rx_center_frequency = frequency ;
-    if( radio != NULL ) {
-        radio->setRxCenterFreq( frequency );
+void Controller::setWebService( WebService *service ) {
+    this->webservice = service ;
+    if( webservice != NULL ) {
+        webservice->reportStatus( (m_state==Controller::csRun), rx_center_frequency );
+        connect( webservice, SIGNAL(mturnOn()), this, SLOT(startAcquisition()), Qt::QueuedConnection );
+        connect( webservice, SIGNAL(mturnOff()), this, SLOT(stopAcquisition()), Qt::QueuedConnection );
     }
-    processor->raz();
+}
+
+void Controller::setRxCenterFrequency(qint64 frequency) {
+    this->rx_tune_request = frequency ;
+
 }
 
 void Controller::startAcquisition() {
@@ -121,8 +131,12 @@ void Controller::close() {
     radio->close();
 }
 
-void Controller::setDetectionThreshold(float level) {
-     processor->setDetectionThreshold(level);
+float Controller::setDetectionThreshold(float level) {
+    return( processor->setDetectionThreshold(level) );
+}
+
+void Controller::SLOT_FPSetsNewThreshold( float value ) {
+    emit newSNRThreshold(value);
 }
 
 void Controller::run() {
@@ -156,14 +170,20 @@ void Controller::run() {
             break ;
 
         case Controller::csStart:
-            for( i=0 ; i < FFT_SPECTRUM ; i++ ) {
-                     spectrum[i] = -100 ;
+            for( i=0 ; i < FFT_SPECTRUM_LEN ; i++ ) {
+                spectrum[i] = -100 ;
             }
+            if( radio != NULL )
+                radio->setRxCenterFreq( rx_center_frequency );
+
             processor->raz();
             channelizer->reset();
             channelizer->setCenterOfWindow( FRAME_OFFSET_LOW + DEMODULATOR_SAMPLERATE/2 );
             if( radio->startAcquisition() == 1 ) {
                 next_state = Controller::csRun ;
+                if( webservice != NULL ) {
+                    webservice->reportStatus( true, rx_center_frequency );
+                }
             }
             break ;
 
@@ -178,11 +198,25 @@ void Controller::run() {
                 continue ;
             }
             process( samples, sample_count );
+            if( rx_tune_request > 0 ) {
+                qint64 newf = rx_tune_request ;
+                rx_tune_request = 0 ;
+                if( radio != NULL )
+                    radio->setRxCenterFreq( newf );
+                processor->raz();
+                rx_center_frequency = newf ;
+                if( webservice != NULL ) {
+                    webservice->reportStatus( true, rx_center_frequency );
+                }
+            }
             break ;
 
         case Controller::csStop:
             radio->stopAcquisition() ;
             next_state = Controller::csIdle ;
+            if( webservice != NULL ) {
+                webservice->reportStatus( true, rx_center_frequency );
+            }
             break ;
         }
     }
@@ -198,9 +232,9 @@ void Controller::process( TYPECPX*samples, int L ) {
 
     //qDebug() << "Controller::process() L=" << L ;
 
-    if( L > FFT_SPECTRUM ) {
+    if( L > FFT_SPECTRUM_LEN ) {
         generateSpectrum(samples);
-        emit newSpectrumAvailable(FFT_SPECTRUM, smin, smax);
+        emit newSpectrumAvailable(FFT_SPECTRUM_LEN, rx_center_frequency);
     }
 
     while( left > 0 ) {
@@ -233,36 +267,39 @@ void Controller::process( TYPECPX*samples, int L ) {
 
 void Controller::generateSpectrum( TYPECPX *samples ) {
     int i,j ;
-    double cpow = 2.0/FFT_SPECTRUM ;
+    double cpow = 2.0/FFT_SPECTRUM_LEN ;
 
     smin = 0 ;
     smax = -200 ;
-    for (i = 0;  i < FFT_SPECTRUM;i++)
+    // apply window
+    for (i = 0;  i < FFT_SPECTRUM_LEN;i++)
     {
         fftin[i][0] = samples[i].re * hamming_coeffs[i];
         fftin[i][1] = samples[i].im * hamming_coeffs[i];
     }
+    //compute FFT
     fftwf_execute( plan );
 
+    //extract ft and compute power
     semspectrum->acquire(1);
     // neg portion of spectrum
     j = 0 ;
-    for( i=FFT_SPECTRUM/2 ; i < FFT_SPECTRUM ; i++ ) {
+    for( i=FFT_SPECTRUM_LEN/2 ; i < FFT_SPECTRUM_LEN ; i++ ) {
         float a = fftin[i][0];
         float b = fftin[i][1];
         float modulus = sqrtf( a*a + b*b );
-        double dbFs = 20*log10( cpow * modulus + 1e-9 );
+        double dbFs = 20*log10( cpow * modulus + 1e-10 );
         spectrum[j] = .9*spectrum[j] + .1*dbFs ;
         if( spectrum[j] > smax ) smax = spectrum[j] ;
         if( spectrum[j] < smin ) smin = spectrum[j] ;
         j++ ;
     }
     // pos spectrum
-    for( i=0 ; i < FFT_SPECTRUM/2 ; i++ ) {
+    for( i=0 ; i < FFT_SPECTRUM_LEN/2 ; i++ ) {
         float a = fftin[i][0];
         float b = fftin[i][1];
         float modulus = sqrtf( a*a + b*b );
-        double dbFs = 20*log10( cpow * modulus + 1e-9 );
+        double dbFs = 20*log10( cpow * modulus + 1e-10);
         spectrum[j] = .9*spectrum[j] + .1*dbFs ;
         if( spectrum[j] > smax ) smax = spectrum[j] ;
         if( spectrum[j] < smin ) smin = spectrum[j] ;
@@ -275,11 +312,16 @@ void  Controller::getSpectrum( double* values ) {
     if( values == NULL )
         return ;
     semspectrum->acquire(1);
-    memcpy( values, spectrum, FFT_SPECTRUM*sizeof(double));
+    memcpy( values, spectrum, FFT_SPECTRUM_LEN*sizeof(double));
     semspectrum->release(1);
 }
 
-void Controller::SLOT_powerLevel( float level )  {
+void Controller::SLOT_frameDetectorStateChanged( QString stateName ) {
+    emit newState( stateName );
+    //qDebug() << "Controller::SLOT_frameDetectorStateChanged" << stateName ;
+}
+
+void Controller::SLOT_powerLevelChanged( float level )  {
     emit powerLevel(level);
 }
 
@@ -299,54 +341,4 @@ void Controller::SLOT_hasGpsTime(int year, int month, int day, int hour, int min
     this->min = min ;
     this->sec = sec ;
     this->msec = msec ;
-}
-
-static float radians(float angle) { return( angle/180*3.14159265358979323846) ; }
-static float degrees(float rad  ) { return( rad/3.14159265358979323846*180); }
-static float sq( float x ) { return( x*x ) ; }
-
-
-float Controller::distance_between (float lat1, float long1, float lat2, float long2)
-{
-    // returns distance in meters between two positions, both specified
-    // as signed decimal-degrees latitude and longitude. Uses great-circle
-    // distance computation for hypothetical sphere of radius 6372795 meters.
-    // Because Earth is no exact sphere, rounding errors may be up to 0.5%.
-    // Courtesy of Maarten Lamers
-    float delta = radians(long1-long2);
-    float sdlong = sin(delta);
-    float cdlong = cos(delta);
-    lat1 = radians(lat1);
-    lat2 = radians(lat2);
-    float slat1 = sin(lat1);
-    float clat1 = cos(lat1);
-    float slat2 = sin(lat2);
-    float clat2 = cos(lat2);
-    delta = (clat1 * slat2) - (slat1 * clat2 * cdlong);
-    delta = sq(delta);
-    delta += sq(clat2 * sdlong);
-    delta = sqrt(delta);
-    float denom = (slat1 * slat2) + (clat1 * clat2 * cdlong);
-    delta = atan2(delta, denom);
-    return delta * 6372795;
-}
-
-float Controller::course_to (float lat1, float long1, float lat2, float long2)
-{
-    // returns course in degrees (North=0, West=270) from position 1 to position 2,
-    // both specified as signed decimal-degrees latitude and longitude.
-    // Because Earth is no exact sphere, calculated course may be off by a tiny fraction.
-    // Courtesy of Maarten Lamers
-    float dlon = radians(long2-long1);
-    lat1 = radians(lat1);
-    lat2 = radians(lat2);
-    float a1 = sin(dlon) * cos(lat2);
-    float a2 = sin(lat1) * cos(lat2) * cos(dlon);
-    a2 = cos(lat1) * sin(lat2) - a2;
-    a2 = atan2(a1, a2);
-    if (a2 < 0.0)
-    {
-        a2 += M_PI*2;
-    }
-    return degrees(a2);
 }

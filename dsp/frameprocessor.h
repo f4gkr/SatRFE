@@ -33,20 +33,9 @@
 #include <QQueue>
 #include "common/samplefifo.h"
 #include "common/datatypes.h"
-
-class SampleBlock {
-public:
-    SampleBlock( TYPECPX* IQsamples, int L );
-    ~SampleBlock();
-
-    void markAsLastBlock();
-    TYPECPX *getData() { return( memory ) ; }
-    int getLength() { return( mSize ) ; }
-private:
-    TYPECPX *memory ;
-    int mSize ;
-    bool lastBlock ;
-};
+#include "core/sampleblock.h"
+#include "frametodecoder.h"
+#include "activity.h"
 
 #define DEFAULT_DETECTION_THRESHOLD (4)
 
@@ -59,7 +48,7 @@ public:
 
     // change detection threshold for the correlator
     // default is 30dB
-    void setDetectionThreshold(float level);
+    float setDetectionThreshold(float level);
 
     // call this function each time a paquet of samples is available
     int newData(TYPECPX* IQsamples, int L , int sampleRate );
@@ -67,10 +56,13 @@ public:
     void raz();
 
 signals:
+    void newState( QString stateName );
     void powerLevel( float level ) ;
     void frameDetected( float signal_level  ) ;
+    void newSNRThreshold( float threshold );
 
 public slots:
+    void SLOT_DeleteWriter( FrameToDecoder *writer );
 
 private:
     enum  { sInit=0 ,
@@ -79,6 +71,15 @@ private:
             sFrameStart=3,
             sFrameEnds=4
           } ;
+
+    enum {
+            sUseRmsPower = 0,
+            sUseCorrelator=1
+    };
+
+    ActivityDetector *adt ;
+
+    int m_detectorMethod ;
     int m_state, next_state ;
     QQueue<SampleBlock*> queue ;
     long queueSampleCount ;
@@ -91,11 +92,17 @@ private:
     double rms_power ;
     long samples_for_powerestimation ;
 
+
+    float detector( TYPECPX *samples, int L);
     float rmsp(TYPECPX *samples, int L );
+    float correlator( TYPECPX *samples, int L);
 
     QString stateToS(int s);
     void flushQueue(int L);
     void writeQueueToFile( QString filename, long samples );
+
+    int processDataRMS(TYPECPX* IQsamples, int L , int sampleRate );
+    int processDataAD(TYPECPX* IQsamples, int L , int sampleRate );
 };
 
 #endif // UAVPROCESSOR_H

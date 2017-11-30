@@ -32,30 +32,11 @@
 #include <math.h>
 #include <stdio.h>
 #include "common/constants.h"
+#include "frametodecoder.h"
+
+#define FRAME_DEBUG (1)
 
 //-- Class SampleBlock
-
-SampleBlock::SampleBlock( TYPECPX* IQsamples, int L ) {
-    mSize = L ;
-    memory = (TYPECPX *)malloc( mSize * sizeof(TYPECPX));
-    memcpy( memory, IQsamples, mSize * sizeof(TYPECPX));
-    lastBlock = false ;
-}
-
-SampleBlock::~SampleBlock() {
-    free( memory );
-    memory = NULL ;
-    mSize = 0 ;
-}
-
-void SampleBlock::markAsLastBlock() {
-    lastBlock = true ;
-}
-
-//pushback
-
-
-
 FrameProcessor::FrameProcessor(QObject *parent) : QObject(parent)
 {
     m_bandwidth = 0 ;
@@ -63,13 +44,16 @@ FrameProcessor::FrameProcessor(QObject *parent) : QObject(parent)
     noise_floor = 0 ;
     m_state = next_state = FrameProcessor::sInit ;
     queueSampleCount = 0 ;
+    m_detectorMethod = sUseRmsPower ;
+    adt = new ActivityDetector();
 }
 
-void FrameProcessor::setDetectionThreshold(float level) {
+float FrameProcessor::setDetectionThreshold(float level) {
     detection_threshold = level ;
     threshold = noise_floor + detection_threshold ;
-    qDebug() << " noise level was " << noise_floor ;
-    qDebug() << " threshold is now " << threshold ;
+    if( FRAME_DEBUG ) qDebug() << " noise level was " << noise_floor ;
+    if( FRAME_DEBUG ) qDebug() << " threshold is now " << threshold ;
+    return( threshold );
 }
 
 
@@ -91,6 +75,19 @@ QString FrameProcessor::stateToS(int s) {
 }
 
 int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
+    if( m_detectorMethod == sUseRmsPower ) {
+        return( processDataRMS(IQsamples, L, sampleRate));
+    }
+    return( processDataAD(IQsamples, L, sampleRate));
+}
+
+int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) {
+    Q_UNUSED(sampleRate ) ;
+    adt->processSamples( IQsamples, L );
+    return(0);
+}
+
+int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate ) {
     int length ;
     float v ;
     TYPECPX* start = IQsamples ;
@@ -101,9 +98,9 @@ int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
 
     while( remaining_samples > 0 ) {
         if( next_state != m_state ) {
-            qDebug() << " state transition from " << stateToS(m_state) << " to " << stateToS(next_state);
-
+            if( FRAME_DEBUG )  qDebug() << " state transition from " << stateToS(m_state) << " to " << stateToS(next_state);
             m_state = next_state ;
+            emit newState( stateToS(m_state));
         }
 
         switch( m_state ) {
@@ -131,8 +128,10 @@ int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
                     threshold = noise_floor + detection_threshold ;
                     next_state = sSearchFrame ;
 
-                    qDebug() << " noise level is set to " << noise_floor ;
-                    qDebug() << " threshold is " << threshold ;
+                    if( FRAME_DEBUG )  qDebug() << " noise level is void SLOT_DeleteWriter( FrameToDecoder *writer );set to " << noise_floor ;
+                    if( FRAME_DEBUG )  qDebug() << " threshold is " << threshold ;
+
+                    emit newSNRThreshold(threshold);
                 }
             } else {
                 return(remaining_samples);
@@ -193,10 +192,6 @@ int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
             v = rmsp( start, remaining_samples ) ;
             emit powerLevel(v);
             remaining_samples = 0 ;
-
-            //qDebug() << "queueSampleCount=" << queueSampleCount ;
-
-
             // check what is the power level at the end of the block
             if( queueSampleCount > MINFRAME_LENGTH ) {
                 start = IQsamples + L - PREAMBLE_LENGTH ;
@@ -221,6 +216,7 @@ int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
 }
 
 
+
 float FrameProcessor::rmsp( TYPECPX *samples, int L ) {
     float res = 0 ;
     int k = 0 ;
@@ -231,62 +227,44 @@ float FrameProcessor::rmsp( TYPECPX *samples, int L ) {
     return(res);
 }
 
+void FrameProcessor::SLOT_DeleteWriter( FrameToDecoder *writer ) {
+    qDebug() << " deleting writer " ;
+    writer->deleteLater();
+}
+
 void FrameProcessor::flushQueue(int L) {
     int saved_count = 0 ;
-    int block_count = 0 ;
-    size_t bytes = 0 ;
-    char filename[255] ;
-    static int file_counter = 250 ;
-    FILE* data ;
+
 
     if( L == 0 ) {
         while( !queue.isEmpty() ) {
             SampleBlock *b = queue.dequeue() ;
+            bool waslast = b->isLastBlock() ;
             delete b ;
+            if( waslast ) {
+                return ;
+            }
         }
         return ;
     }
 
-    sprintf( filename, "/home/picsat/SatRFE/data/frame%d.dat", file_counter++ );
-    data = fopen( filename, "wb");
-    bytes = fwrite(  &L, sizeof(int),1, data);
+    if( FrameToDecoder::onWrite() ) {
+        // busy
+        qDebug() << "Cannot write to file now, busy from previous operation" ;
+        return ;
+    }
+
+    FrameToDecoder* fichier = new FrameToDecoder();
+    connect( fichier, SIGNAL(fileWritten(FrameToDecoder*)), this, SLOT(SLOT_DeleteWriter(FrameToDecoder*)),     Qt::QueuedConnection );
 
     while( !queue.isEmpty() && (saved_count<L)) {
         SampleBlock *b = queue.dequeue() ;
-        TYPECPX *samples = b->getData() ;
-        saved_count += b->getLength() ;
-        bytes += fwrite( samples, 1, b->getLength()*sizeof(TYPECPX), data);
-        delete b ;
-        block_count++ ;
+        fichier->addBlock(b);
+        if( b->isLastBlock() )
+            break ;
     }
-    fclose( data );
-
-    qDebug() << "----------------------------------------------------" ;
-    qDebug() << "file  :" << QString::fromLocal8Bit(filename );
-    qDebug() << "saved " << saved_count << " samples, size=" << saved_count*sizeof(TYPECPX) << bytes ;
-    qDebug() << "blocks :" << block_count ;
+    fichier->start();
 
 }
 
-//Normalize to [-180,180):
-inline double constrainAngle(double x){
-    x = fmod(x + M_PI,2*M_PI);
-    if (x < 0)
-        x += 2*M_PI;
-    return x - M_PI;
-}
-// convert to [-360,360]
-inline double angleConv(double angle){
-    return fmod(constrainAngle(angle),2*M_PI);
-}
-inline double angleDiff(double a,double b){
-    double dif = fmod(b - a + M_PI,2*M_PI);
-    if (dif < 0)
-        dif += 2*M_PI;
-    return dif - M_PI;
-}
-
-inline double unwrap(double previousAngle,double newAngle){
-    return previousAngle - angleDiff(newAngle,angleConv(previousAngle));
-}
 

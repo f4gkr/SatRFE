@@ -38,7 +38,7 @@
 #include "hardware/rtlsdr.h"
 #include "dsp/overlapsave.h"
 #include "dsp/frameprocessor.h"
-
+#include "webinterface/webservice.h"
 
 class Controller : public QThread
 {
@@ -51,36 +51,45 @@ public:
     }
 
     void setRadio( RTLSDR* radio ) ;
-    void setRxCenterFrequency( uint64_t frequency ) ;
+    void setWebService( WebService *service );
 
-    void startAcquisition();
-    void stopAcquisition();
     bool isAcquiring();
 
     void close();
     void getSpectrum( double* values );
 
-    void setDetectionThreshold(float level);
+    float setDetectionThreshold(float level);
 
 signals:
-    void newSpectrumAvailable(int len, double minlevel, double maxlevel);
-    void powerLevel( float level ) ;
 
+    void newSpectrumAvailable(int len, qint64 frequency);
+    void powerLevel( float level ) ;
+    void newState( QString stateName );
+    void  newSNRThreshold( float threshold );
 
 public slots:
-    void SLOT_powerLevel( float level ) ;
-    void  SLOT_hasGpsFix(double latitude, double longitude );
-    void  SLOT_hasGpsTime( int year, int month, int day,
-                     int hour, int min, int sec, int msec );
+    void setRxCenterFrequency( qint64 frequency ) ;
+    void startAcquisition();
+    void stopAcquisition();
+
+    void SLOT_frameDetectorStateChanged( QString stateName );
+    void SLOT_powerLevelChanged( float level ) ;
+    void SLOT_hasGpsFix(double latitude, double longitude );
+    void SLOT_hasGpsTime( int year, int month, int day,
+                          int hour, int min, int sec, int msec );
+    void SLOT_FPSetsNewThreshold( float value );
 
 private:
     enum  { csInit=0, csIdle=1, csStart=2,csRun=3, csStop=4, csEnded=99 } ;
 
     RTLSDR *radio ;
+    WebService *webservice;
     OverlapSave *channelizer ;
     FrameProcessor *processor ;
 
     uint64_t rx_center_frequency ;
+    uint64_t rx_tune_request ;
+
     bool m_stop ;
     int m_state, next_state ;
 
@@ -88,13 +97,14 @@ private:
     double smin, smax ;
     double *hamming_coeffs ;
     fftwf_complex * fftin ;
-     fftwf_plan plan ;
-     QSemaphore *semspectrum ;
+    fftwf_plan plan ;
 
-     double m_Latitude ;
-     double m_Longitude ;
-     double m_Altitude ;
-     QSemaphore *sempos ;
+    QSemaphore *semspectrum ;
+
+    double m_Latitude ;
+    double m_Longitude ;
+    double m_Altitude ;
+    QSemaphore *sempos ;
 
     Controller();
     Controller(const Controller &); // hide copy constructor
@@ -104,8 +114,7 @@ private:
     void process( TYPECPX*samples, int L );
     void generateSpectrum( TYPECPX *samples );
     void hamming_window(double *win,  int win_size) ;
-    float distance_between (float lat1, float long1, float lat2, float long2);
-    float course_to (float lat1, float long1, float lat2, float long2);
+
 };
 
 #endif // CONTROLLER_H

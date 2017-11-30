@@ -28,6 +28,7 @@
 //==========================================================================================
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
+#include <QObject>
 
 #define LOGGER_NAME  "PicsatRFE"
 #define LOGGER_FILENAME "picsatrfe.log"
@@ -42,6 +43,8 @@
   */
 #define FRAME_OFFSET_LOW 10e3
 
+#define FIFO_FILENAME "/tmp/test"
+
 #define SYMBOL_RATE 9600 /* picsat modem bitrate */
 #define OVERSAMPLE_RATIO (4)
 #define DEMODULATOR_SAMPLERATE (9600*OVERSAMPLE_RATIO) /* baseband sample rate */
@@ -52,4 +55,26 @@
 #define RX_OFFSET (1e3) /* how far away from rx center we shift to avoid DC component */
 
 #define CONFIG_FILENAME "picsatrfe.conf"
+#define DEFAULT_RX_FREQUENCY (436.4708*1e6)
+
+class GlobalConfig : public QObject
+{
+    Q_OBJECT
+public:
+    static GlobalConfig& getInstance()  {
+        static GlobalConfig instance;
+        return instance;
+    }
+
+    QString cFIFO_FileName ;
+    qint64 cRX_FREQUENCY ;
+
+private:
+    GlobalConfig();
+
+    GlobalConfig(const GlobalConfig &); // hide copy constructor
+    GlobalConfig& operator=(const GlobalConfig &);
+
+};
+
 #endif // CONSTANTS_H

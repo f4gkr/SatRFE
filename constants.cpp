@@ -26,67 +26,32 @@
 //authors and should not be interpreted as representing official policies, either expressed
 //or implied, of Sylvain AZARIAN F4GKR.
 //==========================================================================================
-#ifndef GPDSD_H
-#define GPDSD_H
+#include "constants.h"
+#include <QDebug>
+#include <QApplication>
+#include <QSettings>
 
-#include <QObject>
-#include <QSemaphore>
-#include <QThread>
-#include <QTimer>
 
-#ifndef WIN32
-#include <gps.h>
-#else
-#include "windows/rs232.h"
-#endif
+GlobalConfig::GlobalConfig() {
+    QSettings settings( QApplication::applicationDirPath() + "/" + QString(CONFIG_FILENAME), QSettings::IniFormat);
 
-#define ERROR_NO_GPSD (-1)
-
-class GPSD : public QThread
-{
-    Q_OBJECT
-
-public:
-    static GPSD& getInstance()  {
-        static GPSD instance;
-        return instance;
+    settings.beginGroup("Interface");
+    if( !settings.contains("FIFO_FILENAME")) {
+        settings.setValue("FIFO_FILENAME", QString(FIFO_FILENAME));
+    } else {
+        cFIFO_FileName = settings.value( "FIFO_FILENAME", QString(FIFO_FILENAME)  ).toString();
     }
+    settings.endGroup();
 
-    ~GPSD() ;
-    void shutdown();
-
-    bool hasDevice();
-
-
-signals:
-
-    void hasError( int code );
-    void hasGpsFix( double latitude, double longitude );
-    void hasGpsTime( int year, int month, int day,
-                     int hour, int min, int sec, int msec );
-public slots:
-    void processError( int errorCode );
-
-private slots:
-    void SLOT_timer();
-
-private:
-    bool m_stop ;
-    bool device_found ;
-    QTimer *timer ;
-    int comm_port ;
-
-    bool log_NMEA ;
-    QString nmea_fileName ;
-
-
-
-    GPSD(QObject *parent = 0);
-    GPSD(const GPSD &); // hide copy constructor
-    GPSD& operator=(const GPSD &);
-
-    void run();
-    void startLocalTimer();
-};
-
-#endif // GPDSD_H
+    settings.beginGroup("Radio");
+    if( !settings.contains("RX_FREQUENCY")) {
+        settings.setValue("RX_FREQUENCY", (double)(DEFAULT_RX_FREQUENCY/1e6) );
+    } else {
+        // value stored in MHz
+        cRX_FREQUENCY = (qint64)(settings.value( "RX_FREQUENCY", (double)DEFAULT_RX_FREQUENCY ).toDouble() * 1e6 );
+        if( (cRX_FREQUENCY < 0) || (cRX_FREQUENCY>10e9) ) {
+            cRX_FREQUENCY = (qint64)DEFAULT_RX_FREQUENCY ;
+        }
+    }
+    settings.endGroup();
+}
