@@ -38,11 +38,11 @@ port=8001
 Unless http port is set to 0 in config file, starts a http server listening by default on port 8001
 
 supported requests are so far :
-* http://<<ip>>:<<port>>/start
-* http://<<ip>>:<<port>>/stop
-* http://<<ip>>:<<port>>/status : returns a description of the current status (ongoing, not finished)
-* http://<<ip>>:<<port>>/tune/<frequency in MHz> 
+* http://<< ip >>:<< port >>/start
+* http://<< ip >>:<< port >>/stop
+* http://<< ip >>:<< port >>/status : returns a description of the current status (ongoing, not finished)
+* http://<< ip >>:<< port >>/tune/<frequency in MHz> 
     tunes to desired freq
-    for example : * http://<<ip>>:<<port>>/tune/438.256 to receive 438.256000 MHz
+    for example : * http://<< ip >>:<< port >>/tune/438.256 to receive 438.256000 MHz
     
     
