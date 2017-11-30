@@ -32,41 +32,14 @@
 #include <QMainWindow>
 #include <QLCDNumber>
 
+#include "ui/plotter.h"
 #include "hardware/rtlsdr.h"
 #include "ui/freqctrl.h"
 #include "ui/spectrumplot.h"
 #include "ui/indicatorwidget.h"
 #include "ui/qcustomplot.h"
 #include "ui/gkdial.h"
-#include "qwt/qwt_plot_zoneitem.h"
-// inspired from the Qwt examples
-class SpectrumSegment: public QwtPlotZoneItem
-{
-public:
-    SpectrumSegment( const QString &title )
-    {
-        setTitle( title );
-        setZ( 999 ); // on top the the grid
-        setOrientation( Qt::Vertical );
-        setItemAttribute( QwtPlotItem::Legend, true );
-    }
-
-    void setColor( const QColor &color )
-    {
-        QColor c = color;
-
-        c.setAlpha( 10 );
-        setPen( c );
-
-        c.setAlpha( 80 );
-        setBrush( c );
-    }
-
-    void setInterval( double fmin, double fmax )
-    {
-        QwtPlotZoneItem::setInterval( fmin,fmax );
-    }
-};
+#include "webinterface/webservice.h"
 
 class MainWindow : public QMainWindow
 {
@@ -77,45 +50,45 @@ public:
     ~MainWindow();
 
     void setRadio( RTLSDR* device );
+    void setWebService( WebService *service );
 
 public slots:
     void SLOT_powerLevel( float level ) ;
 
     void  SLOT_hasGpsFix(double latitude, double longitude );
     void  SLOT_hasGpsTime( int year, int month, int day,
-                     int hour, int min, int sec, int msec );
+                           int hour, int min, int sec, int msec );
 
 private slots:
     void SLOT_userTunesFreqWidget(qint64 newFrequency);
-    void SLOT_newSpectrum(int len  , double smin, double smax);
+    void SLOT_NewDemodFreq(qint64 freq, qint64 delta);
+    void SLOT_newSpectrum(int len  , qint64 frequency);
+    void SLOT_frameDetectorStateChanged( QString stateName );
     void SLOT_startPressed();
     void SLOT_stopPressed();
 
     void SLOT_setRxGain(int) ;
     void SLOT_setDetectionThreshold(int);
+    void SLOT_NewSNRThreshold( float value );
+
+    void SLOT_gpsdAsError( int code );
 
 private:
     int received_frame ;
     int msg_count ;
-     SpectrumSegment *seg_rx ;
-     CFreqCtrl *mainFDisplay ;
-     gkDial *gain_rx ;
-     gkDial *detection_threshold ;
-     QLCDNumber *zuluDisplay ;
-     QLCDNumber *z_latitude ;
-     QLCDNumber *z_longitude ;
+    CPlotter *wf ;
+    CFreqCtrl *mainFDisplay ;
+    gkDial *gain_rx ;
+    gkDial *detection_threshold ;
+    QLCDNumber *zuluDisplay ;
 
-     QLineEdit *satDistance ;
-     QLineEdit *satElevation;
-     QLineEdit *satAzimuth ;
-
-     RTLSDR* radio ;
-     SpectrumPlot *plot ;
-
-     IndicatorWidget *levelWidget ;
-     QCustomPlot *levelplot ;
-     float min_level ;
-     float max_level ;
+    QLineEdit* decoderStatus ;
+    WebService *webservice;
+    RTLSDR* radio ;
+    IndicatorWidget *levelWidget ;
+    QCustomPlot *levelplot ;
+    float min_level ;
+    float max_level ;
 };
 
 #endif // MAINWINDOW_H

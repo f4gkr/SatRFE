@@ -32,19 +32,30 @@
 #include <QSplashScreen>
 #include <QMessageBox>
 
-#include "core/controller.h"
+#include "common/constants.h"
+
 #include "mainwindow.h"
+#include "core/controller.h"
 #include "hardware/rtlsdr.h"
 #include "hardware/gpdsd.h"
-#include "common/constants.h"
 #include "common/QLogger.h"
+#include "dsp/frametodecoder.h"
+
+#include "httpserver/httplistener.h"
+#include "webinterface/webservice.h"
 
 
 
 int main(int argc, char *argv[])
 {
+    HttpListener* webserver;
     QApplication a(argc, argv);
     QApplication::setStyle(QStyleFactory::create("plastique"));
+
+    // load configuration file
+    GlobalConfig& global = GlobalConfig::getInstance() ;
+
+    FrameToDecoder::synchro = new QSemaphore(1);
 
     QLogger::QLoggerManager *manager = QLogger::QLoggerManager::getInstance();
     manager->addDestination( LOGGER_FILENAME, QStringList( LOGGER_NAME ),  QLogger::TraceLevel);
@@ -66,10 +77,6 @@ int main(int argc, char *argv[])
          return(-1);
     }
 
-    // start our local GPSD daemon
-    GPSD& gpsd= GPSD::getInstance() ;
-    gpsd.start();
-
     Controller& control = Controller::getInstance() ;
     if( dongle.setRxSampleRate( SYMBOL_RATE * 200 ) < 0 ) { // sampling rate is 1.92 MHz
         msgBox.setWindowTitle( VER_PRODUCTNAME_STR );
@@ -81,8 +88,16 @@ int main(int argc, char *argv[])
     control.setRadio( &dongle );
     control.start();
 
+    // start web server
+    QSettings settings( QApplication::applicationDirPath() + "/" + QString(CONFIG_FILENAME), QSettings::IniFormat);
+    settings.beginGroup("WebServer");
+    WebService *ws = new WebService(&a);
+    webserver = new HttpListener( &settings, ws, &a);
+    control.setWebService( ws );
+
     MainWindow *w = new MainWindow();
     w->setRadio( &dongle );
+    w->setWebService( ws );
     w->show();
 
     return a.exec();

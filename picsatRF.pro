@@ -42,13 +42,8 @@ DEFINES += BUILD_DATE='"\\\"$(shell  date +\"%Y%m%d\")\\\""'
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
 
-# You can also make your code fail to compile if you use deprecated APIs.
-# In order to do so, uncomment the following line.
-# You can also select to disable deprecated APIs only up to a certain version of Qt.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
 include( qwt/qwt.pri )
-include( qwtPolar/qwtPolar.pri)
+include( httpserver/httpserver.pri)
 
 LIBS +=  -lusb-1.0 -lpthread -lrtlsdr  -lfftw3f -lm
 win32 {
@@ -72,7 +67,14 @@ SOURCES += main.cpp\
     hardware/windows/tinygps.cpp \
     hardware/windows/rs232.c \
     ui/gkdial.cpp \
-    dsp/frameprocessor.cpp
+    dsp/frameprocessor.cpp \
+    dsp/frametodecoder.cpp \
+    core/sampleblock.cpp \
+    common/constants.cpp \
+    ui/plotter.cpp \
+    ui/bookmarks.cpp \
+    webinterface/webservice.cpp \
+    dsp/activity.cpp
 
 HEADERS  += mainwindow.h \
     ui/freqctrl.h \
@@ -89,4 +91,10 @@ HEADERS  += mainwindow.h \
     hardware/windows/rs232.h \
     hardware/windows/tinygps.h \
     ui/gkdial.h \
-    dsp/frameprocessor.h
+    dsp/frameprocessor.h \
+    dsp/frametodecoder.h \
+    core/sampleblock.h \
+    ui/plotter.h \
+    ui/bookmarks.h \
+    webinterface/webservice.h \
+    dsp/activity.h
