@@ -62,7 +62,7 @@ public:
 
 signals:
 
-    void newSpectrumAvailable(int len, qint64 frequency);
+    void newSpectrumAvailable(int len, TuningPolicy* tp);
     void powerLevel( float level ) ;
     void newState( QString stateName );
     void  newSNRThreshold( float threshold );
@@ -87,7 +87,7 @@ private:
     OverlapSave *channelizer ;
     FrameProcessor *processor ;
 
-    uint64_t rx_center_frequency ;
+    TuningPolicy *tp ;
     uint64_t rx_tune_request ;
 
     bool m_stop ;

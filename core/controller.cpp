@@ -38,8 +38,7 @@ Controller::Controller() : QThread(NULL)
 {
     radio = NULL ;
     webservice = NULL ;
-    rx_center_frequency = 0 ;
-    rx_tune_request = 0 ;
+
     m_stop = false ;
     m_state = Controller::csInit ;
     channelizer = NULL ;
@@ -62,6 +61,9 @@ Controller::Controller() : QThread(NULL)
     connect( &gpsd, SIGNAL(hasGpsFix(double,double)), this, SLOT(SLOT_hasGpsFix(double,double)), Qt::QueuedConnection );
     connect( &gpsd, SIGNAL(hasGpsTime(int,int,int,int,int,int,int)), this, SLOT(SLOT_hasGpsTime(int,int,int,int,int,int,int)),Qt::QueuedConnection);
 
+    GlobalConfig& gc = GlobalConfig::getInstance() ;
+    tp = new TuningPolicy();
+    gc.getTuneParameters( gc.cRX_FREQUENCY , tp);
 }
 
 void Controller::hamming_window(double *win,  int win_size)
@@ -85,7 +87,8 @@ void Controller::setRadio(RTLSDR *radio) {
 void Controller::setWebService( WebService *service ) {
     this->webservice = service ;
     if( webservice != NULL ) {
-        webservice->reportStatus( (m_state==Controller::csRun), rx_center_frequency );
+        GlobalConfig& gc = GlobalConfig::getInstance() ;
+        webservice->reportStatus( (m_state==Controller::csRun), gc.getReceivedFrequency(tp) );
         connect( webservice, SIGNAL(mturnOn()), this, SLOT(startAcquisition()), Qt::QueuedConnection );
         connect( webservice, SIGNAL(mturnOff()), this, SLOT(stopAcquisition()), Qt::QueuedConnection );
     }
@@ -146,6 +149,8 @@ void Controller::run() {
     TYPECPX* samples ;
     int sample_count ;
 
+    GlobalConfig& gc = GlobalConfig::getInstance() ;
+
     qDebug() << "Controller::run() " ;
 
     while( !m_stop ) {
@@ -174,15 +179,16 @@ void Controller::run() {
                 spectrum[i] = -100 ;
             }
             if( radio != NULL )
-                radio->setRxCenterFreq( rx_center_frequency );
+                radio->setRxCenterFreq( tp );
 
             processor->raz();
             channelizer->reset();
-            channelizer->setCenterOfWindow( FRAME_OFFSET_LOW + DEMODULATOR_SAMPLERATE/2 );
+            channelizer->setCenterOfWindow( tp->channelizer_offset );
+
             if( radio->startAcquisition() == 1 ) {
                 next_state = Controller::csRun ;
                 if( webservice != NULL ) {
-                    webservice->reportStatus( true, rx_center_frequency );
+                    webservice->reportStatus( true, gc.getReceivedFrequency(tp) );
                 }
             }
             break ;
@@ -199,14 +205,14 @@ void Controller::run() {
             }
             process( samples, sample_count );
             if( rx_tune_request > 0 ) {
-                qint64 newf = rx_tune_request ;
+                gc.getTuneParameters( rx_tune_request, tp );
                 rx_tune_request = 0 ;
-                if( radio != NULL )
-                    radio->setRxCenterFreq( newf );
+                if( radio != NULL ) {
+                    radio->setRxCenterFreq( tp );
+                }
                 processor->raz();
-                rx_center_frequency = newf ;
                 if( webservice != NULL ) {
-                    webservice->reportStatus( true, rx_center_frequency );
+                    webservice->reportStatus( true, gc.getReceivedFrequency(tp) );
                 }
             }
             break ;
@@ -215,7 +221,7 @@ void Controller::run() {
             radio->stopAcquisition() ;
             next_state = Controller::csIdle ;
             if( webservice != NULL ) {
-                webservice->reportStatus( true, rx_center_frequency );
+                webservice->reportStatus( true, gc.getReceivedFrequency(tp) );
             }
             break ;
         }
@@ -234,7 +240,7 @@ void Controller::process( TYPECPX*samples, int L ) {
 
     if( L > FFT_SPECTRUM_LEN ) {
         generateSpectrum(samples);
-        emit newSpectrumAvailable(FFT_SPECTRUM_LEN, rx_center_frequency);
+        emit newSpectrumAvailable(FFT_SPECTRUM_LEN, tp );
     }
 
     while( left > 0 ) {

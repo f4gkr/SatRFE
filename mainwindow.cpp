@@ -204,12 +204,13 @@ void MainWindow::setRadio( RTLSDR* device ) {
     mainFDisplay->setup( 11, radio->getMin_HWRx_CenterFreq() ,
                          radio->getMax_HWRx_CenterFreq(),
                          10, UNITS_MHZ );
-    mainFDisplay->resetToFrequency( radio->getRxCenterFreq() );
+
     wf->setSampleRate( radio->getRxSampleRate() );
+    mainFDisplay->resetToFrequency( radio->getRxCenterFreq() );
 
     Controller& ctrl = Controller::getInstance() ;
-    connect( &ctrl, SIGNAL(newSpectrumAvailable(int, qint64)),  this,
-             SLOT(SLOT_newSpectrum(int, qint64)), Qt::QueuedConnection );
+    connect( &ctrl, SIGNAL(newSpectrumAvailable(int, TuningPolicy*)),  this,
+             SLOT(SLOT_newSpectrum(int, TuningPolicy*)), Qt::QueuedConnection );
     connect( &ctrl, SIGNAL(powerLevel(float)), this, SLOT(SLOT_powerLevel(float)), Qt::QueuedConnection );
     connect( &ctrl, SIGNAL(newState(QString)), this, SLOT(SLOT_frameDetectorStateChanged(QString)), Qt::QueuedConnection );
     connect( &ctrl, SIGNAL(newSNRThreshold(float)), this, SLOT(SLOT_NewSNRThreshold(float)), Qt::QueuedConnection );
@@ -218,7 +219,8 @@ void MainWindow::setRadio( RTLSDR* device ) {
 
     GlobalConfig& gc = GlobalConfig::getInstance() ;
     mainFDisplay->setFrequency(gc.cRX_FREQUENCY);
-    //radio->setRxCenterFreq( gc.cRX_FREQUENCY ) ;
+
+
 
 }
 
@@ -269,19 +271,19 @@ void MainWindow::SLOT_frameDetectorStateChanged( QString stateName ) {
     decoderStatus->setText( stateName );
 }
 
-void MainWindow::SLOT_newSpectrum( int len , qint64 frequency ) {
+void MainWindow::SLOT_newSpectrum(int len , TuningPolicy *tp ) {
     double power_dB[len] ;
 
-    uint64_t rx_center_frequency = frequency ;
     Controller& ctrl = Controller::getInstance() ;
     ctrl.getSpectrum( power_dB );
 
-    //mainFDisplay->resetToFrequency( frequency );
+    //qDebug() << "SLOT_newSpectrum.channelizer_offset=" << tp->channelizer_offset/1e3 << " Kz." ;
+    //qDebug() << "SLOT_newSpectrum.rx_hardware_frequency=" << tp->rx_hardware_frequency/1e3 << " KHz." ;
 
     wf->blockSignals(true);
     wf->setSampleRate( radio->getRxSampleRate() );
-    wf->setCenterFreq( rx_center_frequency );
-    wf->setDemodCenterFreq( rx_center_frequency );
+    wf->setCenterFreq( tp->rx_hardware_frequency );
+    wf->setDemodCenterFreq( tp->rx_hardware_frequency + tp->channelizer_offset );
     wf->setNewFttData( power_dB, len );
     wf->blockSignals(false);
 }

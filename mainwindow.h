@@ -31,7 +31,7 @@
 
 #include <QMainWindow>
 #include <QLCDNumber>
-
+#include "common/tuningpolicy.h"
 #include "ui/plotter.h"
 #include "hardware/rtlsdr.h"
 #include "ui/freqctrl.h"
@@ -62,7 +62,7 @@ public slots:
 private slots:
     void SLOT_userTunesFreqWidget(qint64 newFrequency);
     void SLOT_NewDemodFreq(qint64 freq, qint64 delta);
-    void SLOT_newSpectrum(int len  , qint64 frequency);
+    void SLOT_newSpectrum(int len  , TuningPolicy *tp);
     void SLOT_frameDetectorStateChanged( QString stateName );
     void SLOT_startPressed();
     void SLOT_stopPressed();

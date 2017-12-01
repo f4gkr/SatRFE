@@ -33,6 +33,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
+#include "common/tuningpolicy.h"
 #include "common/datatypes.h"
 #include "common/samplefifo.h"
 
@@ -63,7 +64,7 @@ public:
     int setRTLGain(float db ) ;
     float getRxGain();
     bool setAutoGainMode();
-    int setRxCenterFreq( uint64_t freq_hz );
+    int setRxCenterFreq(TuningPolicy *freq_hz );
     uint64_t getRxCenterFreq();
 
     uint64_t getMin_HWRx_CenterFreq() ;

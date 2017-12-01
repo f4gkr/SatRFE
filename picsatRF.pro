@@ -74,7 +74,8 @@ SOURCES += main.cpp\
     ui/plotter.cpp \
     ui/bookmarks.cpp \
     webinterface/webservice.cpp \
-    dsp/activity.cpp
+    dsp/activity.cpp \
+    common/tuningpolicy.cpp
 
 HEADERS  += mainwindow.h \
     ui/freqctrl.h \
@@ -97,4 +98,6 @@ HEADERS  += mainwindow.h \
     ui/plotter.h \
     ui/bookmarks.h \
     webinterface/webservice.h \
-    dsp/activity.h
+    dsp/activity.h \
+    common/datatypes.h \
+    common/tuningpolicy.h

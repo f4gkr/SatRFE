@@ -166,17 +166,21 @@ RTLSDR::RTLSDR( int select_index)
 
     setRxSampleRate();
     setRTLGain(10);
-    setRxCenterFreq(min_tuner_freq+10e6) ;
+
+    TuningPolicy *tp = new TuningPolicy();
+    tp->channelizer_offset = 0 ;
+    tp->rx_hardware_frequency = min_tuner_freq+10e6 ;
+    setRxCenterFreq(tp) ;
+    delete tp ;
 
     pthread_create(&receive_thread, NULL, acquisition_thread, this );
 }
 
 
-int RTLSDR::setRxCenterFreq(uint64_t freq_hz ) {
-    //qDebug() << "RTLSDR::setRxCenterFreq: " << freq_hz / 1e6 ;
-    int rc = rtlsdr_set_center_freq( rtlsdr_device, freq_hz  );
+int RTLSDR::setRxCenterFreq( TuningPolicy* freq_hz ) {
+    int rc = rtlsdr_set_center_freq( rtlsdr_device, freq_hz->rx_hardware_frequency  );
     if( !rc ) {
-        this->freq_hz = freq_hz ;
+        this->freq_hz = freq_hz->rx_hardware_frequency ;
     }
     return( rc );
 }
@@ -231,7 +235,6 @@ int RTLSDR::startAcquisition() {
 
     if( sampling_rate == 0 ) {
          setRxSampleRate();
-         setRxCenterFreq(144e6);
          setRTLGain( 30 );
     }
 
@@ -273,6 +276,7 @@ uint64_t RTLSDR::getMax_HWRx_CenterFreq()  {
 }
 
 #define ALPHA_DC (0.999)
+#define USE_DC_REMOVAL
 int RTLSDR::processData( unsigned char *buf, uint32_t len ) {
       uint32_t lendata ;
       uint32_t i,j ;
@@ -288,6 +292,7 @@ int RTLSDR::processData( unsigned char *buf, uint32_t len ) {
           j = 2*i ;
           I =  ((int)buf[j  ] - 127)/ 127.0f   ;
           Q =  ((int)buf[j+1] - 127)/ 127.0f   ;
+#ifdef USE_DC_REMOVAL
           // DC
           // y[n] = x[n] - x[n-1] + alpha * y[n-1]
           // see http://peabody.sapp.org/class/dmp2/lab/dcblock/
@@ -299,10 +304,15 @@ int RTLSDR::processData( unsigned char *buf, uint32_t len ) {
 
           yn_1.re = tmp.re ;
           yn_1.im = tmp.im ;
-
           //----
           OutBuf[i].re = tmp.re ;
           OutBuf[i].im = tmp.im ;
+#else
+          //----
+          OutBuf[i].re = I ;
+          OutBuf[i].im = Q ;
+#endif
+
       }
 
       if( fifo->EnqueueData( (void *)OutBuf, len/2, 0, NULL ) < 0 ) {

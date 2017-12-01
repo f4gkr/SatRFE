@@ -29,17 +29,43 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 #include <QObject>
+#include "datatypes.h"
+#include "tuningpolicy.h"
+
 
 #define LOGGER_NAME  "PicsatRFE"
 #define LOGGER_FILENAME "picsatrfe.log"
 #define VER_PRODUCTNAME_STR "picsatrfe"
 /**
-  In current version the frame is 100 KHz wide
-  we sample 110 Khz. To avoid RX Dc at center, RX windows is 10 K above rx center
-  example : RTLSDR rx center at 430.000
-  window starts at 430.010
-                center at 430.065
-                   ends at 430.120
+  In current version the frame is (SymbolRate x Oversample ratio) wide
+  This is the DEMODULATOR_SAMPLERATE constant
+
+  For example : Symbol Rate is 9600 , Oversample Ratio = 4
+                we have a sampling rate of 38400 Hz
+                DEMODULATOR_SAMPLERATE = 38400
+
+
+  To avoid RX Dc at center and enable energy detction (power based or autocorrelation), we
+  shift the subband of interest by FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2
+        example : Offset set at 10 000 Hz
+        sub-band is centered at (FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2)=10 000 + 38400/2
+                                                                             = 29200 Hz
+
+  Finally:
+    if frequency of interst is f0 :
+    - receiver is tuned to f0 -> we have a DC residual
+    - we extract a subwindow (using Overalp/save channelizer) of (SymbolRate x Oversample ratio) Hz
+    - This subband is not centered at f0, but at f0 - FFAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2
+
+  example :
+    - want to extract signal Symbol Rate is 9600 , Oversample Ratio = 4, centered at f = 436.500 MHz
+    - DEMODULATOR_SAMPLERATE = 38400
+    - (FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2)= 29200 Hz
+    - Rx is tuned to f = 436.500 MHz - 29200 Hz ;
+    - Channelizer (ddc) is centerd at +(FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2) = 29200
+    - Received bandwidth is DEMODULATOR_SAMPLERATE = 38400
+
+
   */
 #define FRAME_OFFSET_LOW 10e3
 
@@ -57,6 +83,8 @@
 #define CONFIG_FILENAME "picsatrfe.conf"
 #define DEFAULT_RX_FREQUENCY (436.4708*1e6)
 
+
+
 class GlobalConfig : public QObject
 {
     Q_OBJECT
@@ -68,6 +96,9 @@ public:
 
     QString cFIFO_FileName ;
     qint64 cRX_FREQUENCY ;
+
+    void getTuneParameters( qint64 frequencyOfInterest, TuningPolicy* tp ) ;
+    qint64 getReceivedFrequency( TuningPolicy* tp );
 
 private:
     GlobalConfig();
