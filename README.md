@@ -13,8 +13,9 @@ To avoid RX Dc at center and enable energy detction (power based or autocorrelat
         example : Offset set at 10 000 Hz
         DEMODULATOR_SAMPLERATE = DEMODULATOR_SAMPLERATE
         
-        sub-band is centered at (FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2)=10 000 + 38400/2
-                                                                             = 29200 Hz
+        sub-band is centered at (FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2)
+        =10 000 + 38400/2
+        = 29200 Hz
         
 Finally:
     if frequency of interst is f0 :
