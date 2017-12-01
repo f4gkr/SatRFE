@@ -1,19 +1,17 @@
-# SatRFE
+ **SatRFE**
 Simple radio frontend for custom processing
 
-In current version the frame is (SymbolRate x Oversample ratio) wide
-This is the DEMODULATOR_SAMPLERATE constant 
+In current version the frame is (SymbolRate x Oversample ratio) wide. This is the **DEMODULATOR_SAMPLERATE** constant 
   
-For example : Symbol Rate is 9600 , Oversample Ratio = 4
-                we have a sampling rate of 38400 Hz
-                DEMODULATOR_SAMPLERATE = 38400
+For example : 
+>Symbol Rate is 9600 , Oversample Ratio = 4
+we have a sampling rate of 38400 Hz
+DEMODULATOR_SAMPLERATE = 38400
                 
                 
 To avoid RX Dc at center and enable energy detction (power based or autocorrelation), we shift the subband of interest by FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2
-        example : Offset set at 10 000 Hz
-        DEMODULATOR_SAMPLERATE = DEMODULATOR_SAMPLERATE
-        
-        sub-band is centered at (FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2)
+        example : Offset set at 10 000 Hz 
+>sub-band is centered at (FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2)
         =10 000 + 38400/2
         = 29200 Hz
         
@@ -24,12 +22,13 @@ Finally:
     - This subband is not centered at f0, but at f0 - FFAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2
   
   example : 
-    - want to extract signal Symbol Rate is 9600 , Oversample Ratio = 4, centered at f = 436.500 MHz
+    >- want to extract signal Symbol Rate is 9600 , Oversample Ratio = 4, centered at f = 436.500 MHz
     - DEMODULATOR_SAMPLERATE = 38400
     - (FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2)= 29200 Hz
     - Rx is tuned to f = 436.500 MHz - 29200 Hz ;
     - Channelizer (ddc) is centerd at +(FRAME_OFFSET_LOW Hz + DEMODULATOR_SAMPLERATE/2) = 29200
     - Received bandwidth is DEMODULATOR_SAMPLERATE = 38400
+
 
 Required Qt Modules :
 qt5-default
