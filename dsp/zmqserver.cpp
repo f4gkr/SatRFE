@@ -65,7 +65,7 @@ void ZmqServer::run() {
         length = b->getLength() ;
 
         // send header
-        zmq_send( socket, (const void *)message, 1, ZMQ_SNDMORE ) ;
+        zmq_send( socket, (const void *)message, 2, ZMQ_SNDMORE ) ;
 
         // send size
         zmq_send( socket, (const void *)&length, sizeof(int), ZMQ_SNDMORE );
