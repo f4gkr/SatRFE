@@ -30,17 +30,17 @@ Finally:
     - Received bandwidth is DEMODULATOR_SAMPLERATE = 38400
 
 
-Required Qt Modules :
+### Required Qt Modules :
 qt5-default
 libqt5svg5-dev
 
-Required librairies :
+### Required librairies :
 - libusb-1.0-0-dev 
 - libgps-dev (connects to gpsd to retrieve time, otherwise on fail uses system time)
 - libfftw3-dev
 - libczmq-dev
 
-clone the repository, then from the folder :
+### clone the repository, then from the folder :
 - generate makefile : 
    qmake
 - compile
