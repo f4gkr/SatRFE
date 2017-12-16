@@ -55,8 +55,6 @@ clone the repository, then from the folder :
 on startup looks for existing (or creates a new one) configuration file called picsatrfe.conf in program dir
 example
   
-[Interface]
-FIFO_FILENAME=/tmp/test
 
 [Radio]
 RX_FREQUENCY=436.4708
