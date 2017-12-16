@@ -64,6 +64,9 @@ Controller::Controller() : QThread(NULL)
     GlobalConfig& gc = GlobalConfig::getInstance() ;
     tp = new TuningPolicy();
     gc.getTuneParameters( gc.cRX_FREQUENCY , tp);
+
+    spectrum_interleave = 1 ;
+    spectrum_interleave_value = 1 ;
 }
 
 void Controller::hamming_window(double *win,  int win_size)
@@ -140,6 +143,10 @@ float Controller::setDetectionThreshold(float level) {
 
 void Controller::SLOT_FPSetsNewThreshold( float value ) {
     emit newSNRThreshold(value);
+}
+
+void Controller::setSpectrumInterleaveValue( int interleave ) {
+    spectrum_interleave = qMax( FFTRATE_MAX - interleave , 1);
 }
 
 void Controller::run() {
@@ -238,9 +245,13 @@ void Controller::process( TYPECPX*samples, int L ) {
 
     //qDebug() << "Controller::process() L=" << L ;
 
-    if( L > FFT_SPECTRUM_LEN ) {
-        generateSpectrum(samples);
-        emit newSpectrumAvailable(FFT_SPECTRUM_LEN, tp );
+    if( (L > FFT_SPECTRUM_LEN ) && (spectrum_interleave>0)){
+        spectrum_interleave_value-- ;
+        if( spectrum_interleave_value <= 0 ) {
+            generateSpectrum(samples);
+            emit newSpectrumAvailable(FFT_SPECTRUM_LEN, tp );
+            spectrum_interleave_value = spectrum_interleave ;
+        }
     }
 
     while( left > 0 ) {

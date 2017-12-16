@@ -83,6 +83,7 @@
 #define CONFIG_FILENAME "picsatrfe.conf"
 #define DEFAULT_RX_FREQUENCY (436.4708*1e6)
 
+#define FFTRATE_MAX (10)
 
 
 class GlobalConfig : public QObject

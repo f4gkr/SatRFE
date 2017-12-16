@@ -26,11 +26,53 @@
 //authors and should not be interpreted as representing official policies, either expressed
 //or implied, of Sylvain AZARIAN F4GKR.
 //==========================================================================================
+#include "zmqserver.h"
+#include <zmq.h>
+#include <unistd.h>
+#include <QDebug>
 
-#include "tuningpolicy.h"
-
-TuningPolicy::TuningPolicy() : QObject(NULL)
+ZmqServer::ZmqServer(QObject *parent) : QThread(parent)
 {
-    rx_hardware_frequency = 0 ;
-    channelizer_offset = 0 ;
+    L = 0 ;
+    synchro = new QSemaphore(0);
+}
+
+void ZmqServer::addBlock( SampleBlock *b ) {
+    if( b == NULL )
+        return ;
+    queue.enqueue(b);
+    synchro->release(1);
+}
+
+void ZmqServer::run() {
+    char message[3] ;
+    int length ;
+    void *context = zmq_ctx_new ();
+    void *socket = zmq_socket (context, ZMQ_PUB);
+    zmq_bind (socket, "tcp://*:5563");
+    qDebug() << "ZmqServer::run() starting" ;
+
+    message[0] = 'I' ;
+    message[1] = 'Q' ;
+    message[3] = 0 ;
+
+    for( ; ; ) {
+        synchro->acquire(1);
+        SampleBlock *b = queue.dequeue() ;
+        if( b == NULL )
+            continue ;
+        TYPECPX *samples = b->getData() ;
+        length = b->getLength() ;
+
+        // send header
+        zmq_send( socket, (const void *)message, 1, ZMQ_SNDMORE ) ;
+
+        // send size
+        zmq_send( socket, (const void *)&length, sizeof(int), ZMQ_SNDMORE );
+
+        // send data
+        zmq_send( socket, (const void *)samples, length*sizeof(TYPECPX), 0);
+
+    }
+    qDebug() << "ZmqServer::run() end ???" ;
 }

@@ -32,7 +32,6 @@
 #include <math.h>
 #include <stdio.h>
 #include "common/constants.h"
-#include "frametodecoder.h"
 
 #define FRAME_DEBUG (1)
 
@@ -46,6 +45,8 @@ FrameProcessor::FrameProcessor(QObject *parent) : QObject(parent)
     queueSampleCount = 0 ;
     m_detectorMethod = sUseRmsPower ;
     adt = new ActivityDetector();
+    zmqs = new ZmqServer();
+    zmqs->start();
 }
 
 float FrameProcessor::setDetectionThreshold(float level) {
@@ -87,12 +88,16 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
     return(0);
 }
 
+#define SUBSAMPLERATE (3)
 int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate ) {
     int length ;
     float v ;
     TYPECPX* start = IQsamples ;
     int remaining_samples = L ;
     SampleBlock *sb ;
+
+    static int subsample = SUBSAMPLERATE ;
+    static float level4display = 0 ;
 
     //qDebug() << "FrameProcessor::newData()" << L ;
 
@@ -117,7 +122,12 @@ int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate )
                 samples_for_powerestimation -= PREAMBLE_LENGTH ;
                 if( samples_for_powerestimation > 0 ) {
                     v = rmsp( start, PREAMBLE_LENGTH ) ;
-                    emit powerLevel(v);
+                    level4display = level4display * .6 + v * .4 ;
+                    subsample-- ;
+                    if( subsample <= 0 ) {
+                        emit powerLevel(v);
+                        subsample = SUBSAMPLERATE ;
+                    }
                     rms_power += v ;
                     start += PREAMBLE_LENGTH ;
                     remaining_samples -= PREAMBLE_LENGTH ;
@@ -141,8 +151,12 @@ int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate )
         case sSearchFrame:
             if( remaining_samples >= PREAMBLE_LENGTH ) {
                 v = rmsp( start, PREAMBLE_LENGTH ) ;
-                //qDebug() << v << threshold ;
-                emit powerLevel(v);
+                level4display = level4display * .6 + v * .4 ;
+                subsample-- ;
+                if( subsample <= 0 ) {
+                    emit powerLevel(v);
+                    subsample = SUBSAMPLERATE ;
+                }
                 if( v >= threshold ) {
                     // considered block contains enough energy (RMS(block) > (noise level + threshold)
                     // start to queue samples
@@ -177,13 +191,14 @@ int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate )
         case sFrameStart:
             // test queue length
             length = queueSampleCount / DEMODULATOR_SAMPLERATE ; // int number of seconds in queue
+            /*
             if( length > MAXSECONDS_IN_QUEUE ) {
                 // not normal ? maybe level is wrong
                 flushQueue(queueSampleCount);
                 next_state = sMeasureNoise ;
                 return(0) ;
             }
-
+            */
             // put block in queue
             queueSampleCount+= remaining_samples ;
             sb = new SampleBlock( start, remaining_samples );
@@ -227,10 +242,6 @@ float FrameProcessor::rmsp( TYPECPX *samples, int L ) {
     return(res);
 }
 
-void FrameProcessor::SLOT_DeleteWriter( FrameToDecoder *writer ) {
-    qDebug() << " deleting writer " ;
-    writer->deleteLater();
-}
 
 void FrameProcessor::flushQueue(int L) {
     int saved_count = 0 ;
@@ -248,22 +259,12 @@ void FrameProcessor::flushQueue(int L) {
         return ;
     }
 
-    if( FrameToDecoder::onWrite() ) {
-        // busy
-        qDebug() << "Cannot write to file now, busy from previous operation" ;
-        return ;
-    }
-
-    FrameToDecoder* fichier = new FrameToDecoder();
-    connect( fichier, SIGNAL(fileWritten(FrameToDecoder*)), this, SLOT(SLOT_DeleteWriter(FrameToDecoder*)),     Qt::QueuedConnection );
-
     while( !queue.isEmpty() && (saved_count<L)) {
         SampleBlock *b = queue.dequeue() ;
-        fichier->addBlock(b);
+        zmqs->addBlock(b);
         if( b->isLastBlock() )
             break ;
     }
-    fichier->start();
 
 }
 

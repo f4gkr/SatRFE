@@ -26,11 +26,33 @@
 //authors and should not be interpreted as representing official policies, either expressed
 //or implied, of Sylvain AZARIAN F4GKR.
 //==========================================================================================
+#ifndef ZMQSERVER_H
+#define ZMQSERVER_H
 
-#include "tuningpolicy.h"
+#include <QObject>
+#include <QThread>
+#include <QSemaphore>
 
-TuningPolicy::TuningPolicy() : QObject(NULL)
+#include "core/sampleblock.h"
+
+class ZmqServer : public QThread
 {
-    rx_hardware_frequency = 0 ;
-    channelizer_offset = 0 ;
-}
+    Q_OBJECT
+public:
+    explicit ZmqServer(QObject *parent = 0);
+
+    void addBlock( SampleBlock *b );
+
+
+signals:
+
+public slots:
+private:
+    QSemaphore *synchro ;
+    QQueue<SampleBlock*> queue ;
+    int L ;
+
+    void run();
+};
+
+#endif // ZMQSERVER_H

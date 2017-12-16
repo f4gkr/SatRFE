@@ -54,7 +54,8 @@ gkDial::gkDial(int knobType, QString label,
 
     QLabel *t_label = new QLabel(this);
     t_label->setText( label );
-    t_label->setAlignment( Qt::AlignCenter );
+    t_label->setAlignment( Qt::AlignCenter | Qt::AlignTop);
+
     //t_label->setStyleSheet("QLabel { color : yellow; }");
 
     QVBoxLayout *layout = new QVBoxLayout( this );;
@@ -68,7 +69,11 @@ gkDial::gkDial(int knobType, QString label,
         layout->addWidget( d_knob );
     }
 
-    //layout->addStretch( 10 );
+    QFrame *line = new QFrame(this);
+    line->setFrameShape(QFrame::HLine); // Horizontal line
+    line->setFrameShadow(QFrame::Sunken);
+    line->setLineWidth(1);
+    layout->addWidget(line);
 
     connect( d_knob, SIGNAL( valueChanged( double ) ),
              this, SLOT( setNum( double ) ) );

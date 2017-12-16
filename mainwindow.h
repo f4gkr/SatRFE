@@ -60,6 +60,8 @@ public slots:
                            int hour, int min, int sec, int msec );
 
 private slots:
+    void SLOT_userChangesFFTRate(int value);
+
     void SLOT_userTunesFreqWidget(qint64 newFrequency);
     void SLOT_NewDemodFreq(qint64 freq, qint64 delta);
     void SLOT_newSpectrum(int len  , TuningPolicy *tp);
@@ -78,6 +80,7 @@ private:
     int msg_count ;
     CPlotter *wf ;
     CFreqCtrl *mainFDisplay ;
+    gkDial *fft_update_rate ;
     gkDial *gain_rx ;
     gkDial *detection_threshold ;
     QLCDNumber *zuluDisplay ;

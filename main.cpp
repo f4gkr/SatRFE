@@ -39,7 +39,6 @@
 #include "hardware/rtlsdr.h"
 #include "hardware/gpdsd.h"
 #include "common/QLogger.h"
-#include "dsp/frametodecoder.h"
 
 #include "httpserver/httplistener.h"
 #include "webinterface/webservice.h"
@@ -54,8 +53,6 @@ int main(int argc, char *argv[])
 
     // load configuration file
     GlobalConfig& global = GlobalConfig::getInstance() ;
-
-    FrameToDecoder::synchro = new QSemaphore(1);
 
     QLogger::QLoggerManager *manager = QLogger::QLoggerManager::getInstance();
     manager->addDestination( LOGGER_FILENAME, QStringList( LOGGER_NAME ),  QLogger::TraceLevel);

@@ -42,6 +42,9 @@
 #include "hardware/gpdsd.h"
 #include "common/QLogger.h"
 #include "common/constants.h"
+
+
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -121,6 +124,11 @@ MainWindow::MainWindow(QWidget *parent)
     zuluDisplay->setPalette(zpalette) ;
     cllayout->addWidget(zuluDisplay);
 
+    fft_update_rate = new gkDial(4,tr("FFT Rate"));
+    fft_update_rate->setScale(1,FFTRATE_MAX);
+    fft_update_rate->setValue(FFTRATE_MAX);
+    cllayout->addWidget(fft_update_rate);
+
     gain_rx = new gkDial(4,tr("RF Gain"));
     gain_rx->setScale(0,40);
     gain_rx->setValue(10);
@@ -157,7 +165,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     levelplot = new QCustomPlot();
     levelplot->addGraph();
-    levelplot->xAxis->setLabel(tr("Frame"));
+    levelplot->xAxis->setLabel(tr("RF Block"));
     levelplot->yAxis->setLabel("Level");
     levelplot->xAxis->setRange(0, 1);
     levelplot->yAxis->setRange(-70, -30);
@@ -182,6 +190,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect( mainFDisplay, SIGNAL(newFrequency(qint64)),
              this, SLOT(SLOT_userTunesFreqWidget(qint64)) );
+    connect( fft_update_rate, SIGNAL(valueChanged(int)), this, SLOT(SLOT_userChangesFFTRate(int)));
     connect( gain_rx, SIGNAL(valueChanged(int)), this, SLOT(SLOT_setRxGain(int)));
     connect( detection_threshold, SIGNAL(valueChanged(int)), this, SLOT(SLOT_setDetectionThreshold(int)));
 
@@ -264,6 +273,11 @@ void MainWindow::SLOT_stopPressed() {
         return ;
     }
     ctrl.stopAcquisition();
+}
+
+void MainWindow::SLOT_userChangesFFTRate(int value) {
+    Controller& ctrl = Controller::getInstance() ;
+    ctrl.setSpectrumInterleaveValue(value);
 }
 
 

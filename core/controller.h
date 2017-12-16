@@ -59,6 +59,7 @@ public:
     void getSpectrum( double* values );
 
     float setDetectionThreshold(float level);
+    void setSpectrumInterleaveValue( int interleave );
 
 signals:
 
@@ -71,6 +72,7 @@ public slots:
     void setRxCenterFrequency( qint64 frequency ) ;
     void startAcquisition();
     void stopAcquisition();
+
 
     void SLOT_frameDetectorStateChanged( QString stateName );
     void SLOT_powerLevelChanged( float level ) ;
@@ -100,6 +102,8 @@ private:
     fftwf_plan plan ;
 
     QSemaphore *semspectrum ;
+    int spectrum_interleave ;
+    int spectrum_interleave_value ;
 
     double m_Latitude ;
     double m_Longitude ;

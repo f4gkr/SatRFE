@@ -34,8 +34,8 @@
 #include "common/samplefifo.h"
 #include "common/datatypes.h"
 #include "core/sampleblock.h"
-#include "frametodecoder.h"
 #include "activity.h"
+#include "zmqserver.h"
 
 #define DEFAULT_DETECTION_THRESHOLD (4)
 
@@ -47,7 +47,7 @@ public:
     explicit FrameProcessor(QObject *parent = 0);
 
     // change detection threshold for the correlator
-    // default is 30dB
+    // default is DEFAULT_DETECTION_THRESHOLD dB
     float setDetectionThreshold(float level);
 
     // call this function each time a paquet of samples is available
@@ -61,8 +61,6 @@ signals:
     void frameDetected( float signal_level  ) ;
     void newSNRThreshold( float threshold );
 
-public slots:
-    void SLOT_DeleteWriter( FrameToDecoder *writer );
 
 private:
     enum  { sInit=0 ,
@@ -77,6 +75,7 @@ private:
             sUseCorrelator=1
     };
 
+    ZmqServer* zmqs ;
     ActivityDetector *adt ;
 
     int m_detectorMethod ;

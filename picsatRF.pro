@@ -45,7 +45,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 include( qwt/qwt.pri )
 include( httpserver/httpserver.pri)
 
-LIBS +=  -lusb-1.0 -lpthread -lrtlsdr  -lfftw3f -lm
+LIBS +=  -lusb-1.0 -lpthread -lrtlsdr  -lfftw3f -lm -lzmq
 win32 {
 
 } else {
@@ -68,14 +68,14 @@ SOURCES += main.cpp\
     hardware/windows/rs232.c \
     ui/gkdial.cpp \
     dsp/frameprocessor.cpp \
-    dsp/frametodecoder.cpp \
     core/sampleblock.cpp \
     common/constants.cpp \
     ui/plotter.cpp \
     ui/bookmarks.cpp \
     webinterface/webservice.cpp \
     dsp/activity.cpp \
-    common/tuningpolicy.cpp
+    common/tuningpolicy.cpp \
+    dsp/zmqserver.cpp
 
 HEADERS  += mainwindow.h \
     ui/freqctrl.h \
@@ -93,11 +93,11 @@ HEADERS  += mainwindow.h \
     hardware/windows/tinygps.h \
     ui/gkdial.h \
     dsp/frameprocessor.h \
-    dsp/frametodecoder.h \
     core/sampleblock.h \
     ui/plotter.h \
     ui/bookmarks.h \
     webinterface/webservice.h \
     dsp/activity.h \
     common/datatypes.h \
-    common/tuningpolicy.h
+    common/tuningpolicy.h \
+    dsp/zmqserver.h
