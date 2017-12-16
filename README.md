@@ -1,5 +1,5 @@
  **SatRFE**
-Simple radio frontend for custom processing
+Simple radio frontend for custom processing - Receives samples from SDR device and extracts sub-band and finally sends IQ samples in float pairs via ZeroMQ
 
 In current version the frame is (SymbolRate x Oversample ratio) wide. This is the **DEMODULATOR_SAMPLERATE** constant 
   
@@ -38,6 +38,7 @@ Required librairies :
 - libusb-1.0-0-dev 
 - libgps-dev (connects to gpsd to retrieve time, otherwise on fail uses system time)
 - libfftw3-dev
+- libczmq-dev
 
 clone the repository, then from the folder :
 - generate makefile : 
