@@ -81,7 +81,7 @@ void ZmqServer::run() {
             // send another ZMQ frame with 0 length to inform readers
             zmq_send( socket, (const void *)message, 2, ZMQ_SNDMORE ) ;
             length = 0 ;
-            zmq_send( socket, (const void *)&length, sizeof(int), ZMQ_SNDMORE );
+            zmq_send( socket, (const void *)&length, sizeof(int), 0 );
         }
 
         delete b ;
