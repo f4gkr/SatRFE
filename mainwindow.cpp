@@ -64,15 +64,7 @@ MainWindow::MainWindow(QWidget *parent)
     tb_layout->setAlignment( Qt::AlignLeft );
     tb_layout->setContentsMargins( 1,1,1,1);
 
-    QPushButton *startButton = new QPushButton("START");
-    startButton->setMaximumWidth(50);
-    startButton->setToolTip(tr("Start SDR"));
-    tb_layout->addWidget( startButton );
 
-    QPushButton *stopButton = new QPushButton("STOP");
-    stopButton->setMaximumWidth(50);
-    stopButton->setToolTip(tr("Stop SDR"));
-    tb_layout->addWidget( stopButton );
 
     mainFDisplay = new CFreqCtrl();
     mainFDisplay->setMinimumWidth(200);
@@ -89,10 +81,38 @@ MainWindow::MainWindow(QWidget *parent)
     cb_layout->setAlignment( Qt::AlignLeft | Qt::AlignTop );
     cb_layout->setContentsMargins( 1,1,1,1);
 
+    // center right
+    QWidget *cr_widget = new QWidget;
+    cr_widget->setMaximumWidth(170);
+    QVBoxLayout *crlayout = new QVBoxLayout;
+    cr_widget->setLayout(crlayout);
+    crlayout->setContentsMargins( 1,1,1,1);
+    crlayout->setAlignment(Qt::AlignLeft | Qt::AlignTop  );
+
+    //
+    QPushButton *startButton = new QPushButton("START");
+    //startButton->setMaximumWidth(50);
+    startButton->setToolTip(tr("Start SDR"));
+    crlayout->addWidget( startButton );
+
+    QPushButton *stopButton = new QPushButton("STOP");
+    //stopButton->setMaximumWidth(50);
+    stopButton->setToolTip(tr("Stop SDR"));
+    crlayout->addWidget( stopButton );
+
+    // Radio Control
+    gain_rx = new gkDial(4,tr("RF Gain"));
+    gain_rx->setScale(0,40);
+    gain_rx->setValue(10);
+    crlayout->addWidget(gain_rx);
+
+    cb_layout->addWidget( cr_widget);
+
     // Waterfall display
     GlobalConfig& cnf = GlobalConfig::getInstance() ;
 
     wf = new CPlotter();
+    wf->setMinimumWidth(250);
     wf->setSampleRate( 1e6 );
     wf->setCenterFreq( cnf.cRX_FREQUENCY );
     wf->setDemodCenterFreq( cnf.cRX_FREQUENCY );
@@ -129,10 +149,7 @@ MainWindow::MainWindow(QWidget *parent)
     fft_update_rate->setValue(FFTRATE_MAX);
     cllayout->addWidget(fft_update_rate);
 
-    gain_rx = new gkDial(4,tr("RF Gain"));
-    gain_rx->setScale(0,40);
-    gain_rx->setValue(10);
-    cllayout->addWidget(gain_rx);
+
 
     detection_threshold= new gkDial(4,tr("Threshold"));
     detection_threshold->setScale(2,20);
@@ -149,6 +166,7 @@ MainWindow::MainWindow(QWidget *parent)
     decoderStatus->setToolTip(tr("Current status of frame detector"));
     decoderStatus->setMaxLength(15);
     cllayout->addWidget( decoderStatus );
+
 
     cb_layout->addWidget( cl_widget);
 
@@ -346,7 +364,11 @@ void MainWindow::SLOT_hasGpsTime(int year, int month, int day, int hour, int min
 void MainWindow::SLOT_setRxGain(int g) {
     if( radio == NULL )
         return ;
+
     radio->setRTLGain( g );
+    // Tell controller that noise level must be re-estimated
+    Controller& ctrl = Controller::getInstance() ;
+    ctrl.doNoiseEstimation();
 }
 
 void MainWindow::SLOT_setDetectionThreshold(int level) {

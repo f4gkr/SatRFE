@@ -53,6 +53,8 @@ public:
     void setRadio( RTLSDR* radio ) ;
     void setWebService( WebService *service );
 
+    void doNoiseEstimation();
+
     bool isAcquiring();
 
     void close();
@@ -85,6 +87,7 @@ private:
     enum  { csInit=0, csIdle=1, csStart=2,csRun=3, csStop=4, csEnded=99 } ;
 
     RTLSDR *radio ;
+
     WebService *webservice;
     OverlapSave *channelizer ;
     FrameProcessor *processor ;
@@ -94,6 +97,7 @@ private:
 
     bool m_stop ;
     int m_state, next_state ;
+    int reestimate_noise ;
 
     double *spectrum ;
     double smin, smax ;

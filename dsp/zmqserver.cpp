@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include <QDebug>
 
+#define DEBUG_ZMQ_SRV (0)
+
 ZmqServer::ZmqServer(QObject *parent) : QThread(parent)
 {
     L = 0 ;
@@ -50,7 +52,7 @@ void ZmqServer::run() {
     void *context = zmq_ctx_new ();
     void *socket = zmq_socket (context, ZMQ_PUB);
     zmq_bind (socket, "tcp://*:5563");
-    qDebug() << "ZmqServer::run() starting" ;
+    if( DEBUG_ZMQ_SRV ) qDebug() << "ZmqServer::run() starting" ;
 
     message[0] = 'I' ;
     message[1] = 'Q' ;
@@ -61,6 +63,7 @@ void ZmqServer::run() {
         SampleBlock *b = queue.dequeue() ;
         if( b == NULL )
             continue ;
+
         TYPECPX *samples = b->getData() ;
         length = b->getLength() ;
 
@@ -72,6 +75,18 @@ void ZmqServer::run() {
 
         // send data
         zmq_send( socket, (const void *)samples, length*sizeof(TYPECPX), 0);
+
+        if( b->isLastBlock() ) {
+            // this is the last block of current frame
+            // send another ZMQ frame with 0 length to inform readers
+            zmq_send( socket, (const void *)message, 2, ZMQ_SNDMORE ) ;
+            length = 0 ;
+            zmq_send( socket, (const void *)&length, sizeof(int), ZMQ_SNDMORE );
+        }
+
+        delete b ;
+
+        if( DEBUG_ZMQ_SRV ) qDebug() << "zmq frame pushed" ;
 
     }
     qDebug() << "ZmqServer::run() end ???" ;

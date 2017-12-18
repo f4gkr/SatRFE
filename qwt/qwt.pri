@@ -48,7 +48,7 @@ SOURCES += \
     $$PWD/qwt_plot_curve.cpp \
     $$PWD/qwt_plot_dict.cpp \
     $$PWD/qwt_plot_directpainter.cpp \
-    $$PWD/qwt_plot_glcanvas.cpp \
+    #$$PWD/qwt_plot_glcanvas.cpp \
     $$PWD/qwt_plot_grid.cpp \
     $$PWD/qwt_plot_histogram.cpp \
     $$PWD/qwt_plot_intervalcurve.cpp \
@@ -147,7 +147,7 @@ HEADERS += \
     $$PWD/qwt_plot_curve.h \
     $$PWD/qwt_plot_dict.h \
     $$PWD/qwt_plot_directpainter.h \
-    $$PWD/qwt_plot_glcanvas.h \
+    #$$PWD/qwt_plot_glcanvas.h \
     $$PWD/qwt_plot_grid.h \
     $$PWD/qwt_plot_histogram.h \
     $$PWD/qwt_plot_intervalcurve.h \

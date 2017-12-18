@@ -47,7 +47,7 @@ include( httpserver/httpserver.pri)
 
 LIBS +=  -lusb-1.0 -lpthread -lrtlsdr  -lfftw3f -lm -lzmq
 win32 {
-
+	INCLUDEPATH += C:/msys64/usr/include
 } else {
     LIBS += -lgps
 }

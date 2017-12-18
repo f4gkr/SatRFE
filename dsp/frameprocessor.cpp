@@ -43,10 +43,14 @@ FrameProcessor::FrameProcessor(QObject *parent) : QObject(parent)
     noise_floor = 0 ;
     m_state = next_state = FrameProcessor::sInit ;
     queueSampleCount = 0 ;
+    m_update_noise_request = 0 ;
+
     m_detectorMethod = sUseRmsPower ;
     adt = new ActivityDetector();
     zmqs = new ZmqServer();
     zmqs->start();
+
+    connect( this, SIGNAL(newDataDetected()), this, SLOT(SLOT_newDataReady()));
 }
 
 float FrameProcessor::setDetectionThreshold(float level) {
@@ -57,10 +61,12 @@ float FrameProcessor::setDetectionThreshold(float level) {
     return( threshold );
 }
 
+void FrameProcessor::updateNoiseLevel() {
+    m_update_noise_request++ ;
+}
 
 
 void FrameProcessor::raz() {
-    flushQueue(0);
     next_state = sInit ;
 }
 
@@ -118,6 +124,9 @@ int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate )
 
             // estimate noise level
         case sMeasureNoise:
+            if( m_update_noise_request > 0 ) {
+                m_update_noise_request = 0 ;
+            }
             if( remaining_samples >= PREAMBLE_LENGTH ) {
                 samples_for_powerestimation -= PREAMBLE_LENGTH ;
                 if( samples_for_powerestimation > 0 ) {
@@ -178,9 +187,17 @@ int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate )
                     start += PREAMBLE_LENGTH ;
                     remaining_samples -= PREAMBLE_LENGTH ;
 
+                    emit newDataDetected();
+
                 } else {
                     start += PREAMBLE_LENGTH/2 ;
                     remaining_samples -= PREAMBLE_LENGTH/2 ;
+                    // if there was a pending update request, we process it now
+                    if( m_update_noise_request > 0 ) {
+                        next_state = sMeasureNoise ;
+                        m_update_noise_request = 0 ;
+                        samples_for_powerestimation = 2*sampleRate ; // use 2 seconds of signal
+                    }
                 }
             } else {
                 return(remaining_samples);
@@ -191,7 +208,10 @@ int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate )
         case sFrameStart:
             // test queue length
             length = queueSampleCount / DEMODULATOR_SAMPLERATE ; // int number of seconds in queue
-            /*
+
+            /*****
+             * disabled: when sat is transmitting scientific payload, the frames are coming one after one in a long transmission
+             * cutting after MAXSECONDS_IN_QUEUE will discard data...
             if( length > MAXSECONDS_IN_QUEUE ) {
                 // not normal ? maybe level is wrong
                 flushQueue(queueSampleCount);
@@ -217,12 +237,20 @@ int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate )
                 }
             }
 
+            emit newDataDetected();
+
             break ;
 
         case sFrameEnds:
-            flushQueue(queueSampleCount);
             queueSampleCount = 0 ;
             next_state = sSearchFrame ;
+            // if there was a pending update request, we process it now
+            if( m_update_noise_request > 0 ) {
+                next_state = sMeasureNoise ;
+                m_update_noise_request = 0 ;
+                samples_for_powerestimation = 2*sampleRate ; // use 2 seconds of signal
+            }
+
             break ;
 
         }
@@ -230,6 +258,14 @@ int FrameProcessor::processDataRMS( TYPECPX* IQsamples, int L , int sampleRate )
     return(0) ;
 }
 
+
+void FrameProcessor::SLOT_newDataReady() {
+
+    while( !queue.isEmpty() ) {
+        SampleBlock *b = queue.dequeue() ;
+        zmqs->addBlock(b);
+    }
+}
 
 
 float FrameProcessor::rmsp( TYPECPX *samples, int L ) {
@@ -240,32 +276,6 @@ float FrameProcessor::rmsp( TYPECPX *samples, int L ) {
     }
     res = 20*log10(sqrtf( 1.0/L * res ));
     return(res);
-}
-
-
-void FrameProcessor::flushQueue(int L) {
-    int saved_count = 0 ;
-
-
-    if( L == 0 ) {
-        while( !queue.isEmpty() ) {
-            SampleBlock *b = queue.dequeue() ;
-            bool waslast = b->isLastBlock() ;
-            delete b ;
-            if( waslast ) {
-                return ;
-            }
-        }
-        return ;
-    }
-
-    while( !queue.isEmpty() && (saved_count<L)) {
-        SampleBlock *b = queue.dequeue() ;
-        zmqs->addBlock(b);
-        if( b->isLastBlock() )
-            break ;
-    }
-
 }
 
 

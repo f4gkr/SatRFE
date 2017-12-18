@@ -67,6 +67,7 @@ Controller::Controller() : QThread(NULL)
 
     spectrum_interleave = 1 ;
     spectrum_interleave_value = 1 ;
+    reestimate_noise = 0 ;
 }
 
 void Controller::hamming_window(double *win,  int win_size)
@@ -147,6 +148,10 @@ void Controller::SLOT_FPSetsNewThreshold( float value ) {
 
 void Controller::setSpectrumInterleaveValue( int interleave ) {
     spectrum_interleave = qMax( FFTRATE_MAX - interleave , 1);
+}
+
+void Controller::doNoiseEstimation() {
+    reestimate_noise++ ;
 }
 
 void Controller::run() {
@@ -276,6 +281,12 @@ void Controller::process( TYPECPX*samples, int L ) {
                 rc = channelizer->get( out, STEP_SIZE , PREAMBLE_LENGTH)  ;
             }
         }
+    }
+
+    //
+    if( reestimate_noise > 0 ) {
+        processor->updateNoiseLevel();
+        reestimate_noise = 0 ;
     }
 
     free(samples);

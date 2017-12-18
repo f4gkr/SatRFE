@@ -34,21 +34,24 @@ int main (void)
 
     int request_nbr;
     for (;;) {
-	// read header
-	rc = zmq_recv( subscriber, message, 2, 0 );
-	message[3] = 0 ;
-	printf("header received rc=%d [%s]\n", rc, message );
+		// read header
+		rc = zmq_recv( subscriber, message, 2, 0 );
+		message[2] = 0 ;
+		printf("header received rc=%d [%s] - ", rc, message );
 
-	len = 0 ;
-	rc = zmq_recv( subscriber, &len, sizeof(int), 0 );
-	printf("size received rc=%d len=%d\n", rc, len );
+		len = 0 ;
+		rc = zmq_recv( subscriber, &len, sizeof(int), 0 );
+		printf("size received rc=%d len=%d - ", rc, len );
 
-	if( len > 0 ) {
-		buffer = (TYPECPX *)malloc( len * sizeof(TYPECPX) );
-		rc = zmq_recv( subscriber, buffer, len, 0);
-		printf ("Received %d complex samples\n", rc/((int)sizeof(TYPECPX)) );
-		free(buffer);
-	}
+		if( len > 0 ) {
+			buffer = (TYPECPX *)malloc( len * sizeof(TYPECPX) );
+			rc = zmq_recv( subscriber, buffer, len, 0);
+			printf ("Received %d complex samples\n", rc/((int)sizeof(TYPECPX)) );
+			free(buffer);
+		} else {
+			printf("Received Length == 0, last frame.\n");
+		}
+		
     }
     zmq_close (subscriber);
     zmq_ctx_destroy (context);

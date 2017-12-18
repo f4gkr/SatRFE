@@ -54,6 +54,7 @@ public:
     int newData(TYPECPX* IQsamples, int L , int sampleRate );
 
     void raz();
+    void updateNoiseLevel();
 
 signals:
     void newState( QString stateName );
@@ -61,6 +62,10 @@ signals:
     void frameDetected( float signal_level  ) ;
     void newSNRThreshold( float threshold );
 
+    void newDataDetected() ;
+
+private slots:
+    void SLOT_newDataReady();
 
 private:
     enum  { sInit=0 ,
@@ -77,7 +82,7 @@ private:
 
     ZmqServer* zmqs ;
     ActivityDetector *adt ;
-
+    int m_update_noise_request ;
     int m_detectorMethod ;
     int m_state, next_state ;
     QQueue<SampleBlock*> queue ;
@@ -97,8 +102,6 @@ private:
     float correlator( TYPECPX *samples, int L);
 
     QString stateToS(int s);
-    void flushQueue(int L);
-    void writeQueueToFile( QString filename, long samples );
 
     int processDataRMS(TYPECPX* IQsamples, int L , int sampleRate );
     int processDataAD(TYPECPX* IQsamples, int L , int sampleRate );

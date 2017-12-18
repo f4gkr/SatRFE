@@ -14,6 +14,7 @@ public:
     TYPECPX *getData() { return( memory ) ; }
     int getLength() { return( mSize ) ; }
     bool isLastBlock()  ;
+
 private:
     TYPECPX *memory ;
     int mSize ;

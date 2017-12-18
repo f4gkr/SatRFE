@@ -191,9 +191,6 @@ void GPSD::run() {
     double longitude = 0  ;
     double altitude = 0 ;
 
-    double ttl_latitude = 0 ;
-    double ttl_longitude = 0 ;
-    double ttl_altitude = 0;
     long ttl_measurements = 0 ;
 
     int gps_hour, gps_min, gps_sec  ;
@@ -266,40 +263,9 @@ void GPSD::run() {
                                 altitude = new_altitude ;
 
 
-                        if( altitude_valid &&  ((abs(dlat)<1e-5) || (abs(dlon)<1e-5) || (abs(dalt)<5) )) {
-                            ttl_latitude += new_latitude ;
-                            ttl_longitude += new_longitude ;
-                            ttl_altitude +=  new_altitude ;
-                            ttl_measurements++  ;
+                        if( (abs(dlat)> 1e-5) || (abs(dlon)> 1e-5) || (abs(dalt)>5) ) {
 
-                            latitude = ttl_latitude/ttl_measurements ;
-                            longitude = ttl_longitude/ttl_measurements ;
-                            altitude = ttl_altitude/ttl_measurements ;
-
-                            // average received positions
-                            emit hasGpsFix(latitude,longitude,altitude);
-
-                            //qDebug() << "improving position " << ttl_measurements ;
-                            //qDebug() << "latitude:" << QString::number(latitude , 'f', 8 );
-                            //qDebug() << "longitude:" << QString::number( ttl_longitude , 'f', 8 );
-                            //qDebug() << "new_altitude="<< new_altitude  << "ttl_altitude=" << ttl_altitude << "ttl_measurements= " << ttl_measurements ;
-                            //qDebug() << "altitude:" << QString::number(altitude );
-
-                        } else {
-                            // change, reset averager
-                            ttl_latitude = latitude ;
-                            ttl_longitude = longitude ;
-                            ttl_altitude = altitude;
-                            ttl_measurements = 1 ;
-
-                            latitude = ttl_latitude  ;
-                            longitude = ttl_longitude  ;
-                            altitude = ttl_altitude  ;
-
-                            // average received positions
-                            emit hasGpsFix(latitude,longitude,altitude);
-
-
+                            emit hasGpsFix(latitude,longitude);
                             QLogger::QLog_Debug("GPSD",
                                                 QString::number(r_gps_hour) + ":" + QString::number(r_gps_min) + ":" + QString::number(r_gps_sec) + ":" +
                                                 ", " + QString::number(new_latitude,'f',6) + "," + QString::number(new_longitude,'f',6) + "," + QString::number(new_altitude,'f',2) );
