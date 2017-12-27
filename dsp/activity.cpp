@@ -74,7 +74,7 @@ void ActivityDetector::processSamples(TYPECPX *in, int len ) {
 
     pt = buffer + w_pos ;
     memcpy( (void *)pt, (void *)in, size * sizeof(fftwf_complex));
-    w_pos += len ;
+    w_pos += size ;
 
     while( w_pos > (FFT_SIZE/2) ) {
            // compute  https://stackoverflow.com/questions/3949324/calculate-autocorrelation-using-fft-in-matlab

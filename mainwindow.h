@@ -40,7 +40,7 @@
 #include "ui/qcustomplot.h"
 #include "ui/gkdial.h"
 #include "webinterface/webservice.h"
-
+#include "common/constants.h"
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -88,7 +88,9 @@ private:
     QLineEdit* decoderStatus ;
     WebService *webservice;
     RTLSDR* radio ;
+#ifndef USE_CORRELATOR
     IndicatorWidget *levelWidget ;
+#endif
     QCustomPlot *levelplot ;
     float min_level ;
     float max_level ;

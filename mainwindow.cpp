@@ -150,16 +150,22 @@ MainWindow::MainWindow(QWidget *parent)
     cllayout->addWidget(fft_update_rate);
 
 
-
     detection_threshold= new gkDial(4,tr("Threshold"));
+#ifdef USE_CORRELATOR
+    detection_threshold->setScale(2,2*DEFAULT_AC_THRESHOLD);
+    detection_threshold->setValue(DEFAULT_AC_THRESHOLD);
+#else
     detection_threshold->setScale(2,20);
     detection_threshold->setValue(DEFAULT_DETECTION_THRESHOLD);
+#endif
     cllayout->addWidget(detection_threshold);
 
+#ifndef USE_CORRELATOR
     levelWidget = new IndicatorWidget( "Level", -100, -30, "SNR - dBc");
     levelWidget->setMinimumWidth(150);
     levelWidget->setMaximumHeight(150);
     cllayout->addWidget( levelWidget);
+#endif
 
     cllayout->addWidget( new QLabel(tr("Detector state:")));
     decoderStatus = new QLineEdit();
@@ -333,10 +339,17 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::SLOT_powerLevel( float level )  {
-    //qDebug() << "level=" << level ;
+
+
+    min_level = qMin( min_level, level );
+    max_level = qMax( max_level, level) ;
+
+
+    //qDebug() << "level=" << level << min_level << max_level ;
 
     levelplot->graph(0)->addData( msg_count/10.0, level);
     levelplot->xAxis->setRange( msg_count/10.0,60,Qt::AlignRight );
+    levelplot->yAxis->setRange( min_level, max_level);
     levelplot->replot();
     msg_count++ ;
 }
@@ -377,7 +390,11 @@ void MainWindow::SLOT_setDetectionThreshold(int level) {
 }
 
 void MainWindow::SLOT_NewSNRThreshold( float value ) {
+#ifdef USE_CORRELATOR
+    Q_UNUSED(value);
+#else
     levelWidget->setValue( value);
+#endif
 }
 
 void MainWindow::SLOT_gpsdAsError( int code ) {

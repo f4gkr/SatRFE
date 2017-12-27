@@ -85,6 +85,8 @@
 
 #define FFTRATE_MAX (10)
 
+#define USE_CORRELATOR /* undef to use power */
+
 
 class GlobalConfig : public QObject
 {

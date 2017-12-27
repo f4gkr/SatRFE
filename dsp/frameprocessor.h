@@ -31,13 +31,15 @@
 
 #include <QObject>
 #include <QQueue>
+#include <fftw3.h>
+
 #include "common/samplefifo.h"
 #include "common/datatypes.h"
 #include "core/sampleblock.h"
-#include "activity.h"
 #include "zmqserver.h"
 
 #define DEFAULT_DETECTION_THRESHOLD (4)
+#define DEFAULT_AC_THRESHOLD (40)
 
 class FrameProcessor : public QObject
 {
@@ -81,9 +83,7 @@ private:
     };
 
     ZmqServer* zmqs ;
-    ActivityDetector *adt ;
     int m_update_noise_request ;
-    int m_detectorMethod ;
     int m_state, next_state ;
     QQueue<SampleBlock*> queue ;
     long queueSampleCount ;
@@ -96,6 +96,12 @@ private:
     double rms_power ;
     long samples_for_powerestimation ;
 
+    // variables used for autocorrelation test
+    fftwf_complex *fftin ;
+    fftwf_complex *buffer ;
+    fftwf_plan plan, plan_rev ;
+    double A,B,C;
+    int w_pos ;
 
     float detector( TYPECPX *samples, int L);
     float rmsp(TYPECPX *samples, int L );
@@ -105,6 +111,7 @@ private:
 
     int processDataRMS(TYPECPX* IQsamples, int L , int sampleRate );
     int processDataAD(TYPECPX* IQsamples, int L , int sampleRate );
+    double modulus(int i);
 };
 
 #endif // UAVPROCESSOR_H
