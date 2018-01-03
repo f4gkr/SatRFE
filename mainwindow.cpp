@@ -232,9 +232,13 @@ MainWindow::MainWindow(QWidget *parent)
 
 }
 
-void MainWindow::setRadio( RTLSDR* device ) {
+void MainWindow::setRadio(RxDevice *device ) {
     radio = device ;
-    mainFDisplay->setup( 11, radio->getMin_HWRx_CenterFreq() ,
+
+    setWindowTitle( QString::fromLocal8Bit( device->getHardwareName() ));
+
+    mainFDisplay->setup( 11,
+                         radio->getMin_HWRx_CenterFreq() ,
                          radio->getMax_HWRx_CenterFreq(),
                          10, UNITS_MHZ );
 
@@ -248,7 +252,12 @@ void MainWindow::setRadio( RTLSDR* device ) {
     connect( &ctrl, SIGNAL(newState(QString)), this, SLOT(SLOT_frameDetectorStateChanged(QString)), Qt::QueuedConnection );
     connect( &ctrl, SIGNAL(newSNRThreshold(float)), this, SLOT(SLOT_NewSNRThreshold(float)), Qt::QueuedConnection );
 
-    gain_rx->setValue( device->getRxGain()  );
+    // adapt GUI to SDR
+    if( device->deviceHasSingleGainStage() ) {
+        gain_rx->setValue( device->getRxGain()  );
+    } else {
+        gain_rx->setVisible(false);
+    }
 
     GlobalConfig& gc = GlobalConfig::getInstance() ;
     mainFDisplay->setFrequency(gc.cRX_FREQUENCY);
@@ -378,7 +387,7 @@ void MainWindow::SLOT_setRxGain(int g) {
     if( radio == NULL )
         return ;
 
-    radio->setRTLGain( g );
+    radio->setRxGain( g );
     // Tell controller that noise level must be re-estimated
     Controller& ctrl = Controller::getInstance() ;
     ctrl.doNoiseEstimation();

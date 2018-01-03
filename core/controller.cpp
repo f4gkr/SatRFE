@@ -82,10 +82,13 @@ void Controller::hamming_window(double *win,  int win_size)
     }
 }
 
-void Controller::setRadio(RTLSDR *radio) {
+void Controller::setRadio(RxDevice *radio) {
     this->radio = radio ;
     channelizer = new OverlapSave( radio->getRxSampleRate(), DEMODULATOR_SAMPLERATE );
     channelizer->configure( 128*1024, 16384 );
+
+    connect( this, SIGNAL(radioStart()), radio, SLOT(SLOT_start()), Qt::QueuedConnection );
+    connect( this, SIGNAL(radioStop()), radio, SLOT(SLOT_stop()), Qt::QueuedConnection );
 }
 
 void Controller::setWebService( WebService *service ) {
@@ -197,12 +200,13 @@ void Controller::run() {
             channelizer->reset();
             channelizer->setCenterOfWindow( tp->channelizer_offset );
 
-            if( radio->startAcquisition() == 1 ) {
-                next_state = Controller::csRun ;
-                if( webservice != NULL ) {
-                    webservice->reportStatus( true, gc.getReceivedFrequency(tp) );
-                }
+            emit radioStart();
+
+            next_state = Controller::csRun ;
+            if( webservice != NULL ) {
+                webservice->reportStatus( true, gc.getReceivedFrequency(tp) );
             }
+
             break ;
 
         case Controller::csRun:
@@ -230,7 +234,7 @@ void Controller::run() {
             break ;
 
         case Controller::csStop:
-            radio->stopAcquisition() ;
+            emit radioStop();
             next_state = Controller::csIdle ;
             if( webservice != NULL ) {
                 webservice->reportStatus( true, gc.getReceivedFrequency(tp) );

@@ -28,8 +28,9 @@
 #==========================================================================================
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
 
 TARGET = picsatRF
 TEMPLATE = app
@@ -45,11 +46,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 include( qwt/qwt.pri )
 include( httpserver/httpserver.pri)
 
-LIBS +=  -lusb-1.0 -lpthread -lrtlsdr  -lfftw3f -lm -lzmq
+LIBS +=  -lusb-1.0 -lpthread -lrtlsdr -lfftw3f -lm -lzmq
+
 win32 {
-	INCLUDEPATH += C:/msys64/usr/include
+    INCLUDEPATH += C:/msys64/usr/include
+    LIBS += -lhidapi
 } else {
-    LIBS += -lgps
+    LIBS += -lgps -lhidapi-hidraw
 }
 
 SOURCES += main.cpp\
@@ -75,7 +78,13 @@ SOURCES += main.cpp\
     webinterface/webservice.cpp \
     dsp/activity.cpp \
     common/tuningpolicy.cpp \
-    dsp/zmqserver.cpp
+    dsp/zmqserver.cpp \
+    hardware/funcube/fcdwidget.cpp \
+    hardware/funcube/funcube.cpp \
+    hardware/rxdevice.cpp \
+    hardware/audio/audioinput.cpp \
+    hardware/rxhardwareselector.cpp \
+    hardware/audio/audiofifo.cpp
 
 HEADERS  += mainwindow.h \
     ui/freqctrl.h \
@@ -100,4 +109,11 @@ HEADERS  += mainwindow.h \
     dsp/activity.h \
     common/datatypes.h \
     common/tuningpolicy.h \
-    dsp/zmqserver.h
+    dsp/zmqserver.h \
+    hardware/funcube/fcdhidcmd.h \
+    hardware/funcube/fcdwidget.h \
+    hardware/funcube/funcube.h \
+    hardware/rxdevice.h \
+    hardware/audio/audioinput.h \
+    hardware/rxhardwareselector.h \
+    hardware/audio/audiofifo.h

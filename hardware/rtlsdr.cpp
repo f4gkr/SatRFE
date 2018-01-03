@@ -35,6 +35,17 @@
 void* acquisition_thread( void *params ) ;
 bool RTLSDR::m_stop ;
 
+RTLSDR::RTLSDR() {
+    rtlsdr_device = NULL ;
+    dev_index = 0 ;
+    device_count = 0 ;
+    gain_size = 0 ;
+    gain_value = NULL ;
+    hardwareName = NULL ;
+    freq_hz = 0 ;
+    sampling_rate = 0 ;
+}
+
 RTLSDR::RTLSDR( int select_index)
 {
     int rc ;
@@ -160,12 +171,12 @@ RTLSDR::RTLSDR( int select_index)
     }
     free( typeName );
     last_gain = 0 ;
-    fifo = new SampleFifo();
+
     sem_init(&mutex, 0, 0);
     m_stop = false ;
 
     setRxSampleRate();
-    setRTLGain(10);
+    setRxGain(10);
 
     TuningPolicy *tp = new TuningPolicy();
     tp->channelizer_offset = 0 ;
@@ -176,6 +187,9 @@ RTLSDR::RTLSDR( int select_index)
     pthread_create(&receive_thread, NULL, acquisition_thread, this );
 }
 
+char* RTLSDR::getHardwareName() {
+    return( hardwareName );
+}
 
 int RTLSDR::setRxCenterFreq( TuningPolicy* freq_hz ) {
     int rc = rtlsdr_set_center_freq( rtlsdr_device, freq_hz->rx_hardware_frequency  );
@@ -185,7 +199,7 @@ int RTLSDR::setRxCenterFreq( TuningPolicy* freq_hz ) {
     return( rc );
 }
 
-uint64_t RTLSDR::getRxCenterFreq() {
+qint64 RTLSDR::getRxCenterFreq() {
     freq_hz = (uint64_t)rtlsdr_get_center_freq( rtlsdr_device ) ;
     return( freq_hz  );
 }
@@ -196,7 +210,7 @@ bool RTLSDR::setAutoGainMode() {
     return( rc == 0 );
 }
 
-int RTLSDR::setRTLGain( float db )  {
+int RTLSDR::setRxGain( float db )  {
     int k ;
     db *= 10 ; // gain stored in tenth of dB
     // set manual gain
@@ -235,7 +249,7 @@ int RTLSDR::startAcquisition() {
 
     if( sampling_rate == 0 ) {
          setRxSampleRate();
-         setRTLGain( 30 );
+         setRxGain( 30 );
     }
 
     rc = rtlsdr_reset_buffer(rtlsdr_device);
@@ -267,11 +281,11 @@ int RTLSDR::setRxSampleRate(uint32_t sampling_rate ) {
     return( rc );
 }
 
-uint64_t RTLSDR::getMin_HWRx_CenterFreq() {
+qint64 RTLSDR::getMin_HWRx_CenterFreq() {
     return( min_tuner_freq ) ;
 }
 
-uint64_t RTLSDR::getMax_HWRx_CenterFreq()  {
+qint64 RTLSDR::getMax_HWRx_CenterFreq()  {
     return( max_tuner_freq ) ;
 }
 

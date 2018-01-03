@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <fftw3.h>
 
-#include "hardware/rtlsdr.h"
+#include "hardware/rxdevice.h"
 #include "dsp/overlapsave.h"
 #include "dsp/frameprocessor.h"
 #include "webinterface/webservice.h"
@@ -50,7 +50,7 @@ public:
         return instance;
     }
 
-    void setRadio( RTLSDR* radio ) ;
+    void setRadio( RxDevice* radio ) ;
     void setWebService( WebService *service );
 
     void doNoiseEstimation();
@@ -70,6 +70,9 @@ signals:
     void newState( QString stateName );
     void  newSNRThreshold( float threshold );
 
+    void radioStart();
+    void radioStop();
+
 public slots:
     void setRxCenterFrequency( qint64 frequency ) ;
     void startAcquisition();
@@ -86,7 +89,7 @@ public slots:
 private:
     enum  { csInit=0, csIdle=1, csStart=2,csRun=3, csStop=4, csEnded=99 } ;
 
-    RTLSDR *radio ;
+    RxDevice *radio ;
 
     WebService *webservice;
     OverlapSave *channelizer ;

@@ -36,7 +36,8 @@
 
 #include "mainwindow.h"
 #include "core/controller.h"
-#include "hardware/rtlsdr.h"
+
+#include "hardware/rxhardwareselector.h"
 #include "hardware/gpdsd.h"
 #include "common/QLogger.h"
 
@@ -44,9 +45,11 @@
 #include "webinterface/webservice.h"
 
 
-
 int main(int argc, char *argv[])
 {
+
+    RxDevice *radio = NULL ;
+
     HttpListener* webserver;
     QApplication a(argc, argv);
     QApplication::setStyle(QStyleFactory::create("plastique"));
@@ -60,29 +63,23 @@ int main(int argc, char *argv[])
     QLogger::QLog_Trace( LOGGER_NAME, "Build date : " + QString(BUILD_DATE));
     QLogger::QLog_Trace( LOGGER_NAME, "Starting" );
 
-    QMessageBox msgBox;
-
-    RTLSDR dongle(0);
-
-    if( dongle.getBoardCount() == 0 ) {
-         QLogger::QLog_Error( LOGGER_NAME, "No RTL-SDR device connected, cannot continue.");
-         msgBox.setWindowTitle( VER_PRODUCTNAME_STR );
-         msgBox.setText("ERROR:  No SDR device detected !");
-         msgBox.setStandardButtons(QMessageBox::Yes );
-         msgBox.exec() ;
-
-         return(-1);
-    }
 
     Controller& control = Controller::getInstance() ;
-    if( dongle.setRxSampleRate( SYMBOL_RATE * 200 ) < 0 ) { // sampling rate is 1.92 MHz
+
+    QMessageBox msgBox;
+    RxHardwareSelector *rxs = new RxHardwareSelector();
+    radio = rxs->getReceiver() ;
+    if( radio == NULL ) {
+        QLogger::QLog_Error( LOGGER_NAME, "No SDR device connected, cannot continue.");
         msgBox.setWindowTitle( VER_PRODUCTNAME_STR );
-        msgBox.setText("ERROR:  Could not set valid sampling rate !");
+        msgBox.setText("ERROR:  No SDR device detected !");
         msgBox.setStandardButtons(QMessageBox::Yes );
         msgBox.exec() ;
         return(-1);
     }
-    control.setRadio( &dongle );
+
+
+    control.setRadio( radio );
     control.start();
 
     // start web server
@@ -93,7 +90,7 @@ int main(int argc, char *argv[])
     control.setWebService( ws );
 
     MainWindow *w = new MainWindow();
-    w->setRadio( &dongle );
+    w->setRadio( radio );
     w->setWebService( ws );
     w->show();
 

@@ -33,15 +33,19 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
+
+#include "hardware/rxdevice.h"
 #include "common/tuningpolicy.h"
 #include "common/datatypes.h"
 #include "common/samplefifo.h"
 
-class RTLSDR
+class RTLSDR : public RxDevice
 {
 public:
-    explicit RTLSDR( int select_index = 0 );
-    int getBoardCount() { return( device_count ) ; }
+    RTLSDR();
+    RTLSDR( int select_index = 0 );
+    int getDeviceCount() { return( device_count ) ; }
+    char* getHardwareName();
 
     int startAcquisition();
     int stopAcquisition();
@@ -55,20 +59,15 @@ public:
         return( sampling_rate );
     }
 
-    int getFifoSize() {
-        return( fifo->getSize()) ;
-    }
-
-    SampleFifo *getFIFO() { return( fifo ); }
-
-    int setRTLGain(float db ) ;
+    int setRxGain(float db ) ;
     float getRxGain();
     bool setAutoGainMode();
-    int setRxCenterFreq(TuningPolicy *freq_hz );
-    uint64_t getRxCenterFreq();
 
-    uint64_t getMin_HWRx_CenterFreq() ;
-    uint64_t getMax_HWRx_CenterFreq() ;
+    int setRxCenterFreq( TuningPolicy *freq_hz );
+    qint64 getRxCenterFreq();
+
+    qint64 getMin_HWRx_CenterFreq() ;
+    qint64 getMax_HWRx_CenterFreq() ;
 
     static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx) ;
     rtlsdr_dev_t *rtlsdr_device ;
@@ -80,7 +79,7 @@ private:
     int dev_index  ;
     int device_count ;
 
-    SampleFifo *fifo ;
+
     TYPECPX xn_1, yn_1 ;
 
     uint64_t freq_hz ; // current center freq

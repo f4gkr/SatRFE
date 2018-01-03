@@ -33,7 +33,7 @@
 #include <QLCDNumber>
 #include "common/tuningpolicy.h"
 #include "ui/plotter.h"
-#include "hardware/rtlsdr.h"
+#include "hardware/rxdevice.h"
 #include "ui/freqctrl.h"
 #include "ui/spectrumplot.h"
 #include "ui/indicatorwidget.h"
@@ -41,6 +41,7 @@
 #include "ui/gkdial.h"
 #include "webinterface/webservice.h"
 #include "common/constants.h"
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -49,7 +50,7 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    void setRadio( RTLSDR* device );
+    void setRadio( RxDevice* device );
     void setWebService( WebService *service );
 
 public slots:
@@ -87,7 +88,7 @@ private:
 
     QLineEdit* decoderStatus ;
     WebService *webservice;
-    RTLSDR* radio ;
+    RxDevice* radio ;
 #ifndef USE_CORRELATOR
     IndicatorWidget *levelWidget ;
 #endif
