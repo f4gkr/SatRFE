@@ -109,7 +109,7 @@ double FrameProcessor::modulus(int i) {
     return( a*a + b*b );
 }
 #define SUBSAMPLERATE (3)
-#define CX1 (.7)
+#define CX1 (.8)
 #define DEBUG_ADETECTOR (0)
 int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) {
     Q_UNUSED(sampleRate ) ;
@@ -158,32 +158,42 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
                 fftwf_execute(plan_rev);
                 //
                 double root = modulus(0);
-
+                A = 0 ;
+                for( int i=0 ; i < FFT_SIZE/2 ; i+=2) {
+                    A += modulus(i);
+                }
+                A = A / (FFT_SIZE/4);
+                A = 20*log10( A / root );
+                v = CX1*A + (1-CX1)*A ;
+                qDebug() << v ;
+/*
                 A = CX1*A + (1-CX1)*(20*log10(modulus(1*OVERSAMPLE_RATIO)/root));
                 B = CX1*B + (1-CX1)*(20*log10(modulus(3*OVERSAMPLE_RATIO)/root));
                 C = CX1*C + (1-CX1)*(20*log10(modulus(11*OVERSAMPLE_RATIO)/root));
                 v = A + B + C ;
+                */
 
-                if( v > threshold ) {
-                    if( (L-remaining_samples) > 0 ) {
-                        TYPECPX* cstart = start ;
-                        cstart -= (L-remaining_samples) ;
-                        SampleBlock *sb = new SampleBlock( cstart, (L-remaining_samples) + PREAMBLE_LENGTH );
-                        queue.enqueue( sb );
-                        queueSampleCount = (L-remaining_samples) + PREAMBLE_LENGTH ;
 
-                    } else {
-                        SampleBlock *sb = new SampleBlock( start, PREAMBLE_LENGTH );
-                        queue.enqueue( sb );
-                        queueSampleCount = PREAMBLE_LENGTH ;
-                    }
-                    next_state = sFrameStart ;
-                    emit frameDetected( v ) ;
-                    start += PREAMBLE_LENGTH ;
-                    remaining_samples -= PREAMBLE_LENGTH ;
+//                if( v > threshold ) {
+//                    if( (L-remaining_samples) > 0 ) {
+//                        TYPECPX* cstart = start ;
+//                        cstart -= (L-remaining_samples) ;
+//                        SampleBlock *sb = new SampleBlock( cstart, (L-remaining_samples) + PREAMBLE_LENGTH );
+//                        queue.enqueue( sb );
+//                        queueSampleCount = (L-remaining_samples) + PREAMBLE_LENGTH ;
 
-                    emit newDataDetected();
-                } else {
+//                    } else {
+//                        SampleBlock *sb = new SampleBlock( start, PREAMBLE_LENGTH );
+//                        queue.enqueue( sb );
+//                        queueSampleCount = PREAMBLE_LENGTH ;
+//                    }
+//                    next_state = sFrameStart ;
+//                    emit frameDetected( v ) ;
+//                    start += PREAMBLE_LENGTH ;
+//                    remaining_samples -= PREAMBLE_LENGTH ;
+
+//                    emit newDataDetected();
+//                } else {
                     start += PREAMBLE_LENGTH/2 ;
                     remaining_samples -= PREAMBLE_LENGTH/2 ;
                     // if there was a pending update request, we process it now
@@ -192,7 +202,7 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
                         m_update_noise_request = 0 ;
                         samples_for_powerestimation = 2*sampleRate ; // use 2 seconds of signal
                     }
-                }
+                //}
 
                 level4display = level4display * .6 + v * .4 ;
                 subsample-- ;

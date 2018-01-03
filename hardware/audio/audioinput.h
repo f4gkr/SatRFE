@@ -69,9 +69,8 @@ public:
     int getSampleRate() { return( m_samplingRate ) ; }
 
 private slots:
-    void newAudioSamples();
-    void bytesWritten(qint64 bytes);
     void stateChanged(QAudio::State state);
+
 private:
     bool closing ;
     int m_samplingRate ;

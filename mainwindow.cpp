@@ -352,6 +352,10 @@ void MainWindow::SLOT_powerLevel( float level )  {
 
     min_level = qMin( min_level, level );
     max_level = qMax( max_level, level) ;
+    if( fabs(max_level-min_level) < 5 ) {
+         min_level -= 2.5 ;
+         max_level += 2.5 ;
+    }
 
 
     //qDebug() << "level=" << level << min_level << max_level ;

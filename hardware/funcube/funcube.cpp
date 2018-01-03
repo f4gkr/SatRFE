@@ -47,7 +47,7 @@ FUNCube::FUNCube() {
     fcd = NULL ;
     ppm_error = 0 ;
 
-    audio_input = new AudioInput( "FUNcube", 96000*2 ) ;
+    audio_input = new AudioInput( "hw:CARD=HD,DEV=0", 96000*2 ) ;
     //audio_input = new AudioInput( "default", 96000*2 ) ;
 
 

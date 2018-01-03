@@ -59,15 +59,21 @@ AudioInput::AudioInput(QString inputName, int desired_sr )
 
         if( deviceName.indexOf( inputName ) > 0 ) {
             qDebug() << "Device name: " << deviceInfo.deviceName();
+            QList<int> rates = deviceInfo.supportedSampleRates() ;
+            for( int i=0 ; i < rates.size() ; i++ ) {
+                int ssr = rates.at(i);
+                qDebug() << "supported sample rate :" << i << ssr ;
+            }
+
             if( deviceInfo.isFormatSupported( format )) {
                 qDebug() << "using " << deviceName ;
                 audio = new QAudioInput( deviceInfo, format, this );
+                audio->setVolume(1);
                 connect( audio, SIGNAL(stateChanged(QAudio::State)), this, SLOT(stateChanged(QAudio::State)));
-                audio->setBufferSize( 1024 );
+                //audio->setBufferSize( 1024 );
                 //audio->setNotifyInterval(1);
-                m_samplingRate = desired_sr ;
-                //audio->reset();
-
+                m_samplingRate = audio->format().sampleRate() ;
+                qDebug() << "sample rate set to " << m_samplingRate ;
                 return ;
             }
         }
@@ -82,12 +88,6 @@ bool AudioInput::startAudio() {
         return(true);
     }
 
-//    audioSamples = new RingBuffer();
-//    connect( audioSamples, SIGNAL(readyRead()), this, SLOT(newAudioSamples()));
-//    connect( audioSamples, SIGNAL(bytesWritten(qint64)), this, SLOT(bytesWritten(qint64)));
-//    audioSamples->open(QIODevice::ReadWrite);
-//    audio->start( audioSamples );
-
     QIODevice::open(QIODevice::ReadWrite);
     audio->start(this);
 
@@ -97,19 +97,16 @@ bool AudioInput::startAudio() {
 
 void AudioInput::stopAudio() {
     audio->stop();
-    //audioSamples->deleteLater();
 }
 
-void AudioInput::bytesWritten(qint64 bytes) {
-    qDebug() << "AudioInput::bytesWritten " << bytes ;
-}
 
 void AudioInput::stateChanged(QAudio::State state) {
     qDebug() << "AudioInput::stateChanged" ;
     switch( state ) {
     case QAudio::ActiveState:
         qDebug() << "ActiveState" ;
-
+        m_samplingRate = audio->format().sampleRate() ;
+        qDebug() << "sample rate set to " << m_samplingRate ;
         break ;
     case QAudio::SuspendedState: qDebug() << "SuspendedState" ; break ;
     case QAudio::StoppedState: qDebug() << "StoppedState" ; break ;
@@ -158,8 +155,8 @@ qint64 AudioInput::writeData(const char *data, qint64 len)
     wr += wr_pos ;
     if( room_left >= remain ) {
         //qDebug() << "AudioInput::writeData adding data to audio_buff : " << len ;
-        memcpy( (void *)wr, (void *)src, len );
-        wr_pos += len ;
+        memcpy( (void *)wr, (void *)src, remain );
+        wr_pos += remain ;
         remain = 0 ;
     }
 
@@ -169,18 +166,20 @@ qint64 AudioInput::writeData(const char *data, qint64 len)
     if( nsample_pairs > 16384 ) {
         buff = (TYPECPX *)malloc( nsample_pairs*sizeof( TYPECPX ));
         for( int i=0 ; i < nsample_pairs ; i++ ) {
-             int j=2*i ;
-             I = ((TYPEREAL)audio_buff[j  ])/32768.0 ;
-             Q = ((TYPEREAL)audio_buff[j+1])/32768.0 ;
-             buff[i].re = I ;
-             buff[i].im = Q ;
-             wr_pos -= nbytes ;
-             remain -= nbytes ;
-             src += nbytes ;
+            int j=2*i ;
+            I = ((TYPEREAL)audio_buff[j  ])/32768.0 ;
+            Q = ((TYPEREAL)audio_buff[j+1])/32768.0 ;
+            buff[i].re = I ;
+            buff[i].im = Q ;
         }
 
+        qint64 bytes_consumed = nbytes * nsample_pairs ;
+        wr_pos -= bytes_consumed ;
+        src += bytes_consumed ;
+
+        qDebug() << "AudioInput::writeData" << room_left << wr_pos << remain << nsample_pairs;
         if( outgoing_fifo->EnqueueData( (void *)buff, nsample_pairs, 0, NULL ) < 0 ) {
-                qDebug() << " AudioInput::run() queue size !!!!" ;
+            qDebug() << " AudioInput::run() queue size !!!!" ;
         }
     }
 
@@ -190,176 +189,7 @@ qint64 AudioInput::writeData(const char *data, qint64 len)
         wr += wr_pos ;
         //qDebug() << "AudioInput::writeData adding last data to audio_buff : " << remain ;
         memcpy( (void *)wr, (void *)src, remain );
-        wr_pos += len ;
+        wr_pos += remain ;
     }
     return(len) ;
 }
-
-void AudioInput::newAudioSamples() {
-//    short int *audio_buff ;
-//    TYPECPX* buff ;
-//    TYPECPX tmp ;
-//    TYPEREAL I,Q ;
-
-//    int cnt = 0 ;
-//    qint16 sI, sQ ;
-
-//    //audioSamples->seek(0) ;//
-//    int blockSize = 0 ; //audioSamples->size() ;
-//    int n_samples = blockSize / (2* sizeof( short int ));
-//    if( n_samples == 0 ) {
-//        return ;
-//    }
-
-//    buff = (TYPECPX *)malloc( n_samples*sizeof( TYPECPX ));
-
-//    QDataStream sampleStream(audioSamples);
-//    while( !sampleStream.atEnd() ) {
-//        sampleStream >> sI ;
-//        sampleStream >> sQ ;
-
-//        I = ((TYPEREAL)(sI))/32768.0 ;
-//        Q = ((TYPEREAL)(sQ))/32768.0 ;
-
-//        // IQ Correction
-//        I *= AmPhAAAA ;
-//        Q = I*AmPhCCCC + Q*AmPhDDDD ;
-//        // DC
-//        // y[n] = x[n] - x[n-1] + alpha * y[n-1]
-//        // see http://peabody.sapp.org/class/dmp2/lab/dcblock/
-//        tmp.re = I - xn_1.re + ALPHA_DC * yn_1.re ;
-//        tmp.im = Q - xn_1.im + ALPHA_DC * yn_1.im ;
-
-//        xn_1.re = I ;
-//        xn_1.im = Q ;
-
-//        yn_1.re = tmp.re ;
-//        yn_1.im = tmp.im ;
-
-//        //qDebug() << I << Q ;
-//        buff[cnt].re = I ;
-//        buff[cnt].im = Q ;
-
-//        cnt++ ;
-//    }
-
-//    qDebug() << "cnt=" << cnt ;
-//    if( outgoing_fifo->EnqueueData( (void *)buff, cnt, 0, NULL ) < 0 ) {
-//        qDebug() << " AudioInput::run() queue size !!!!" ;
-//    }
-
-//    audioSamples->seek(0) ;
-//    int blockSize = audioSamples->size() ;
-//    qDebug() << "blockSize=" << blockSize ;
-//    data = audioSamples->readAll() ;
-//    qDebug() << "QByteArray size:" << data.size() ;
-//    audioSamples->reset() ;
-
-    /*
-    int n_samples = audioSamples->bytesAvailable() / (2* sizeof( short int ));
-    size_t buff_size = n_samples * 2 * sizeof( short int ) ;
-    qDebug() << "AudioInput::newAudioSamples() adding " << n_samples << " in queue" ;
-
-    audio_buff = ( short int * )malloc( buff_size );
-    qint64 bytesRead = audioSamples->read( (char *)audio_buff, buff_size );
-
-    if( bytesRead > 0 ) {
-        short int *pt = audio_buff ;
-        buff = (TYPECPX *)malloc( n_samples*sizeof( TYPECPX ));
-        for( int i=0 ; i < n_samples ; i++ ) {
-            I = ((TYPEREAL)(*pt))/32768.0 ;
-            pt++ ;
-            Q = ((TYPEREAL)(*pt))/32768.0 ;
-            pt++ ;
-
-            // IQ Correction
-            I *= AmPhAAAA ;
-            Q = I*AmPhCCCC + Q*AmPhDDDD ;
-            // DC
-            // y[n] = x[n] - x[n-1] + alpha * y[n-1]
-            // see http://peabody.sapp.org/class/dmp2/lab/dcblock/
-            tmp.re = I - xn_1.re + ALPHA_DC * yn_1.re ;
-            tmp.im = Q - xn_1.im + ALPHA_DC * yn_1.im ;
-
-            xn_1.re = I ;
-            xn_1.im = Q ;
-
-            yn_1.re = tmp.re ;
-            yn_1.im = tmp.im ;
-
-            //qDebug() << I << Q ;
-            buff[i].re = I ;
-            buff[i].im = Q ;
-        }
-        if( outgoing_fifo->EnqueueData( (void *)buff, n_samples, 0, NULL ) < 0 ) {
-            qDebug() << " AudioInput::run() queue size !!!!" ;
-        }
-    }
-    free(audio_buff);
-    */
-}
-
-/*
-void AudioInput::run() {
-    short int *audio_buff ;
-    TYPECPX* buff ;
-    TYPECPX tmp ;
-    TYPEREAL I,Q ;
-    size_t buff_size ;
-    struct rf_context *ctx ;
-
-    audio->reset();
-    QIODevice *in_stream = audio->start();
-    if( in_stream != NULL ) {
-        qDebug() << "Audio stream ok" ;
-    }
-
-    closing = false ;
-    buff_size = BUFF_LEN * 2 * sizeof( short int ) ;
-    audio_buff = ( short int * )malloc( buff_size );
-    while( !closing ) {
-        qint64 bytesRead = in_stream->read( (char *)audio_buff, buff_size );
-        if( bytesRead > 0 ) {
-            ctx = NULL ;
-            int n_samples = bytesRead / (2*sizeof( short int ) );
-            short int *pt = audio_buff ;
-            buff = (TYPECPX *)malloc( n_samples*sizeof( TYPECPX ));
-            for( int i=0 ; i < n_samples ; i++ ) {
-                 I = ((TYPEREAL)(*pt))/32768.0 ;
-                 pt++ ;
-                 Q = ((TYPEREAL)(*pt))/32768.0 ;
-                 pt++ ;
-
-                 // IQ Correction
-                 I *= AmPhAAAA ;
-                 Q = I*AmPhCCCC + Q*AmPhDDDD ;
-                 // DC
-                 // y[n] = x[n] - x[n-1] + alpha * y[n-1]
-                 // see http://peabody.sapp.org/class/dmp2/lab/dcblock/
-                 tmp.re = I - xn_1.re + ALPHA_DC * yn_1.re ;
-                 tmp.im = Q - xn_1.im + ALPHA_DC * yn_1.im ;
-
-                 xn_1.re = I ;
-                 xn_1.im = Q ;
-
-                 yn_1.re = tmp.re ;
-                 yn_1.im = tmp.im ;
-
-                 //qDebug() << I << Q ;
-                 buff[i].re = I ;
-                 buff[i].im = Q ;
-            }
-            if( 0 ) {
-                FILE *f = fopen( "audioinput_raw.dat", "ab" );
-                fwrite( buff, sizeof( TYPECPX), n_samples, f );
-                fclose( f );
-            }
-            qDebug() << "AudioInput::run() adding " << n_samples << " in queue" ;
-            if( outgoing_fifo->EnqueueData( (void *)buff, n_samples, 0, ctx ) < 0 ) {
-                qDebug() << " AudioInput::run() queue size !!!!" ;
-            }
-        }
-    }
-    qDebug() << "end of run()" ;
-}
-*/

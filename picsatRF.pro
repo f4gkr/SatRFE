@@ -83,8 +83,7 @@ SOURCES += main.cpp\
     hardware/funcube/funcube.cpp \
     hardware/rxdevice.cpp \
     hardware/audio/audioinput.cpp \
-    hardware/rxhardwareselector.cpp \
-    hardware/audio/audiofifo.cpp
+    hardware/rxhardwareselector.cpp
 
 HEADERS  += mainwindow.h \
     ui/freqctrl.h \
@@ -115,5 +114,4 @@ HEADERS  += mainwindow.h \
     hardware/funcube/funcube.h \
     hardware/rxdevice.h \
     hardware/audio/audioinput.h \
-    hardware/rxhardwareselector.h \
-    hardware/audio/audiofifo.h
+    hardware/rxhardwareselector.h
