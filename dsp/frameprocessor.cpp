@@ -103,9 +103,9 @@ int FrameProcessor::newData( TYPECPX* IQsamples, int L , int sampleRate ) {
 #endif
 }
 
-double FrameProcessor::modulus(int i) {
-    double a = (double)fftin[i][0];
-    double b = (double)fftin[i][1];
+float FrameProcessor::modulus(int i) {
+    float a = (float)fftin[i][0];
+    float b = (float)fftin[i][1];
     return( a*a + b*b );
 }
 #define SUBSAMPLERATE (3)
@@ -114,8 +114,9 @@ double FrameProcessor::modulus(int i) {
 int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) {
     Q_UNUSED(sampleRate ) ;
     int remaining_samples = L ;
+    int N ;
     TYPECPX* start = IQsamples ;
-    double v ;
+    float v ;
     SampleBlock *sb ;
 
     static int subsample = SUBSAMPLERATE ;
@@ -133,7 +134,7 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
             noise_floor = -1 ;
             rms_power = 0 ;
             next_state = sSearchFrame ;
-            A = B = C = -100 ;
+            A = B = C = level4display = -50 ;
             for( int i=0 ; i < FFT_SIZE ; i++ ) {
                 fftin[i][0] = fftin[i][1] = 0 ;
             }
@@ -142,6 +143,7 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
 
         case sMeasureNoise:
             next_state = sSearchFrame ;
+
         case sSearchFrame:
             if( remaining_samples >= PREAMBLE_LENGTH ) {
                 // copy PREAMBLE_LENGTH samples in FFT buffer
@@ -159,20 +161,13 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
                 //
                 double root = modulus(0);
                 A = 0 ;
-                for( int i=0 ; i < FFT_SIZE/2 ; i+=2) {
+                N = 0 ;
+                for( int i=0 ; i < FFT_SIZE/2 ; i++) {
                     A += modulus(i);
+                    N++ ;
                 }
-                A = A / (FFT_SIZE/4);
-                A = 20*log10( A / root );
-                v = CX1*A + (1-CX1)*A ;
-                qDebug() << v ;
-/*
-                A = CX1*A + (1-CX1)*(20*log10(modulus(1*OVERSAMPLE_RATIO)/root));
-                B = CX1*B + (1-CX1)*(20*log10(modulus(3*OVERSAMPLE_RATIO)/root));
-                C = CX1*C + (1-CX1)*(20*log10(modulus(11*OVERSAMPLE_RATIO)/root));
-                v = A + B + C ;
-                */
-
+                A = A / N ;
+                v = 20*log10f( A / root );
 
 //                if( v > threshold ) {
 //                    if( (L-remaining_samples) > 0 ) {
@@ -194,8 +189,8 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
 
 //                    emit newDataDetected();
 //                } else {
-                    start += PREAMBLE_LENGTH/2 ;
-                    remaining_samples -= PREAMBLE_LENGTH/2 ;
+                    start += PREAMBLE_LENGTH/2 - 1 ;
+                    remaining_samples -= PREAMBLE_LENGTH/2 - 1 ;
                     // if there was a pending update request, we process it now
                     if( m_update_noise_request > 0 ) {
                         next_state = sMeasureNoise ;
@@ -207,8 +202,9 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
                 level4display = level4display * .6 + v * .4 ;
                 subsample-- ;
                 if( subsample <= 0 ) {
-                    emit powerLevel(v);
+                    emit powerLevel(level4display);
                     subsample = SUBSAMPLERATE ;
+                    //qDebug() << v << threshold;
                 }
 
             } else {

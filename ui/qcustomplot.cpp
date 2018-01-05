@@ -19970,6 +19970,10 @@ void QCPGraph::addData(const QVector<double> &keys, const QVector<double> &value
   mDataContainer->add(tempData, alreadySorted); // don't modify tempData beyond this to prevent copy on write
 }
 
+void QCPGraph::clearData() {
+   mDataContainer->clear();
+}
+
 /*! \overload
   
   Adds the provided data point as \a key and \a value to the current data.

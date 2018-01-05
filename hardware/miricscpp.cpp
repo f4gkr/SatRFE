@@ -31,7 +31,7 @@
 #include "common/QLogger.h"
 #include <QDebug>
 
-#define DEBUG_RADIO (1)
+#define DEBUG_RADIO (0)
 
 void* miri_acquisition_thread( void *params ) ;
 bool MiricsSDR::m_stop ;
@@ -45,6 +45,9 @@ MiricsSDR::MiricsSDR() {
     hardwareName = NULL ;
     freq_hz = 0 ;
     sampling_rate = 0 ;
+    wr_pos = 0 ;
+    OutBuf = NULL ;
+    buf_len= 64*1024 ;
 }
 
 MiricsSDR::MiricsSDR( int select_index)
@@ -58,6 +61,9 @@ MiricsSDR::MiricsSDR( int select_index)
     hardwareName = NULL ;
     freq_hz = 0 ;
     sampling_rate = 0 ;
+    wr_pos = 0 ;
+    OutBuf = NULL ;
+    buf_len= 64*1024 ;
 
     rc = (int)mirisdr_get_device_count();
     if( rc < 1 ) {
@@ -181,6 +187,7 @@ int MiricsSDR::startAcquisition() {
     xn_1.im = 0 ;
     yn_1.re = 0 ;
     yn_1.im = 0 ;
+    wr_pos  = 0 ;
     sem_post(&mutex);
     return(1);
 }
@@ -221,11 +228,17 @@ int MiricsSDR::processData( unsigned char *buf, uint32_t len  ) {
     int16_t *rawsamples = (int16_t *)buf ;
     int sample_count = len / (sizeof(int16_t) * 2) ;
 
-    TYPECPX *OutBuf = (TYPECPX*)malloc( sample_count * sizeof(TYPECPX) );
+    if( OutBuf == NULL ) {
+        // allocate new buffer
+        OutBuf = (TYPECPX*)malloc( buf_len * sizeof(TYPECPX) );
+        wr_pos = 0 ;
+    }
+
     if( OutBuf == NULL ) {
         qDebug() << "MALLOC ???? int MIRISDR::processData " ;
         return(0);
     }
+
     for( int i=0 ; i < sample_count ; i++ ) {
         int j = 2*i ;
         I =  (float)rawsamples[j  ] * 1.0/32767.0f   ;
@@ -243,22 +256,28 @@ int MiricsSDR::processData( unsigned char *buf, uint32_t len  ) {
         yn_1.re = tmp.re ;
         yn_1.im = tmp.im ;
         //----
-        OutBuf[i].re = tmp.re ;
-        OutBuf[i].im = tmp.im ;
+        OutBuf[wr_pos].re = tmp.re ;
+        OutBuf[wr_pos].im = tmp.im ;
 #else
         //----
-        OutBuf[i].re = I ;
-        OutBuf[i].im = Q ;
+        OutBuf[wr_pos].re = I ;
+        OutBuf[wr_pos].im = Q ;
 #endif
-
+        wr_pos++ ;
+        if( wr_pos == buf_len ) {
+            // our buffer is full, send it
+            if( fifo->EnqueueData( (void *)OutBuf, buf_len, 0, NULL ) < 0 ) {
+                qDebug() << "MIRISDR::processData() problem - queue full ???" ;
+            }
+            OutBuf = (TYPECPX*)malloc( buf_len * sizeof(TYPECPX) );
+            wr_pos = 0 ;
+        }
     }
 
     if( DEBUG_RADIO )
         qDebug() << "MiricsSDR::processData() queueing samples: " << sample_count ;
 
-    if( fifo->EnqueueData( (void *)OutBuf, sample_count, 0, NULL ) < 0 ) {
-        qDebug() << "MIRISDR::processData() problem - queue full ???" ;
-    }
+
     return( (int)len ) ;
 }
 
@@ -285,7 +304,7 @@ void MiricsSDR::sdr_device_callback(unsigned char *buf, uint32_t len, void *ctx)
 #define DEFAULT_BUF_LENGTH      (1<<14)
 #else
 #define DEFAULT_ASYNC_BUF_NUMBER 4
-#define DEFAULT_BUF_LENGTH      (1<<13)
+#define DEFAULT_BUF_LENGTH      (1<<14)
 #endif
 void* miri_acquisition_thread( void *params ) {
     int rc ;

@@ -111,7 +111,7 @@ private:
 
     int processDataRMS(TYPECPX* IQsamples, int L , int sampleRate );
     int processDataAD(TYPECPX* IQsamples, int L , int sampleRate );
-    double modulus(int i);
+    float modulus(int i);
 };
 
 #endif // UAVPROCESSOR_H

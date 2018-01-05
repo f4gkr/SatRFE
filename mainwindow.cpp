@@ -185,12 +185,14 @@ MainWindow::MainWindow(QWidget *parent)
     pwlayout->setContentsMargins( 0, 0, 0, 0 );
     plotWidget->setLayout( pwlayout );
 
-
-
     levelplot = new QCustomPlot();
     levelplot->addGraph();
-    levelplot->xAxis->setLabel(tr("RF Block"));
-    levelplot->yAxis->setLabel("Level");
+    levelplot->xAxis->setLabel(tr("Received Frame"));
+#ifdef USE_CORRELATOR
+    levelplot->yAxis->setLabel("Corr. Level");
+#else
+    levelplot->yAxis->setLabel("RMS Level");
+#endif
     levelplot->xAxis->setRange(0, 1);
     levelplot->yAxis->setRange(-70, -30);
     levelplot->setMinimumHeight(150);
@@ -198,6 +200,7 @@ MainWindow::MainWindow(QWidget *parent)
     levelplot->graph(1)->setPen(QPen(Qt::red));
     min_level = 0 ;
     max_level = -100 ;
+    msg_count = 0 ;
 
     pwlayout->addWidget( levelplot );
 
@@ -295,7 +298,7 @@ void MainWindow::SLOT_startPressed() {
         return ;
 
     received_frame = msg_count = 0 ;
-
+    levelplot->graph(0)->clearData();
     ctrl.startAcquisition();
 }
 

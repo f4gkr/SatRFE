@@ -252,7 +252,7 @@ void Controller::process( TYPECPX*samples, int L ) {
     int rc,pushback_samples ;
     int left = L ;
 
-    qDebug() << "Controller::process() L=" << L ;
+    //qDebug() << "Controller::process() L=" << L ;
 
     if( (L >= FFT_SPECTRUM_LEN ) && (spectrum_interleave>0)){
         spectrum_interleave_value-- ;
@@ -276,7 +276,7 @@ void Controller::process( TYPECPX*samples, int L ) {
             rc = channelizer->get( out, STEP_SIZE, PREAMBLE_LENGTH )  ;
             while( rc > 0 ) {
                 pushback_samples = processor->newData( out, rc, channelizer->getOLASOutSampleRate() );
-                if( pushback_samples ) {
+                if( pushback_samples ) {                    
                     // rc is number of samples to pushback
                     TYPECPX *tmp = &out[0] ;
                     tmp += rc - 1 - pushback_samples ; // shift pointer

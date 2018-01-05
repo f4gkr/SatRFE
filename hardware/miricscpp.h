@@ -97,7 +97,10 @@ private:
     uint64_t min_tuner_freq ;
     uint64_t max_tuner_freq ;
 
-     int processData(unsigned char *buf, uint32_t len ) ;
+    TYPECPX *OutBuf ;
+    int wr_pos ;
+    int buf_len ;
+    int processData(unsigned char *buf, uint32_t len ) ;
 };
 
 #endif // MIRICSCPPSDR_H
