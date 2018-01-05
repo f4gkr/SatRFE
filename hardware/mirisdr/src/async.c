@@ -215,7 +215,7 @@ static void LIBUSB_CALL _libusb_callback (struct libusb_transfer *xfer) {
             fprintf( stderr,"Error code ?\n");
             break ;
         }
-
+        fflush(stderr);
         goto failed;
     }
 
@@ -458,6 +458,7 @@ int mirisdr_read_async (mirisdr_dev_t *p, mirisdr_read_async_cb_t cb, void *ctx,
         /* počkáme na další událost */
         if ((r = libusb_handle_events_timeout(p->ctx, &tv)) < 0) {
             fprintf( stderr, "libusb_handle_events returned: %d\n", r);
+            fflush(stderr);
             if (r == LIBUSB_ERROR_INTERRUPTED) continue; /* stray */
             goto failed_free;
         }
@@ -511,6 +512,7 @@ failed_free:
     mirisdr_async_free(p);
 
 failed:
+    fflush(stderr);
     return -1;
 }
 
@@ -570,6 +572,7 @@ int mirisdr_stop_async (mirisdr_dev_t *p) {
         /* počkáme na další událost */
         if ((r = libusb_handle_events_timeout(p->ctx, &tv)) < 0) {
             fprintf( stderr, "libusb_handle_events returned: %d\n", r);
+            fflush(stderr);
             if (r == LIBUSB_ERROR_INTERRUPTED) continue; /* stray */
             goto failed;
         }

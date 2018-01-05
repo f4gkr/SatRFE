@@ -37,6 +37,8 @@ public:
     virtual bool deviceHasSingleGainStage() { return( true ) ; }
     virtual int setRxGain(float db );
     virtual float getRxGain();
+    virtual float getMinGain() ;
+    virtual float getMaxGain();
 
 public slots:
     void SLOT_start();

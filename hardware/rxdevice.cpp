@@ -26,6 +26,14 @@ float RxDevice::getRxGain() {
     return(0);
 }
 
+float RxDevice::getMinGain() {
+    return( 0) ;
+}
+
+float RxDevice::getMaxGain() {
+    return( 0) ;
+}
+
 void  RxDevice::SLOT_start() {
     qDebug() << "RxDevice::SLOT_start()" ;
     startAcquisition() ;
@@ -35,3 +43,4 @@ void  RxDevice::SLOT_stop() {
     qDebug() << "RxDevice::SLOT_stop()" ;
     stopAcquisition() ;
 }
+

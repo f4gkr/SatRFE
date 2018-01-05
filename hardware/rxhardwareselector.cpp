@@ -16,6 +16,7 @@ RxDevice *RxHardwareSelector::getReceiver() {
 
     rsp = new MiricsSDR(0);
     if( rsp->getDeviceCount() > 0 ) {
+        rsp->setRxSampleRate(1536*1000);
         return( rsp );
     }
     delete rsp ;

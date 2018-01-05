@@ -107,6 +107,7 @@ MiricsSDR::MiricsSDR( int select_index)
     mirisdr_set_if_freq( sdr_device, 0 );
     mirisdr_set_tuner_gain( sdr_device, last_gain );
     mirisdr_set_sample_format( sdr_device, (char *)"AUTO");
+    mirisdr_set_sample_rate( sdr_device, 1536*1000 ) ;
 
     pthread_create(&receive_thread, NULL, miri_acquisition_thread, this );
 }
@@ -150,18 +151,18 @@ int MiricsSDR::setRxGain( float db )  {
 }
 
 float MiricsSDR::getRxGain() {
-      float value = mirisdr_get_tuner_gain( sdr_device );
-      return( value );
+    float value = mirisdr_get_tuner_gain( sdr_device );
+    return( value );
 }
 
 int MiricsSDR::startAcquisition() {
     int rc ;
 
-     if( DEBUG_RADIO )
-         qDebug() << "RTLSDR::startAcquisition()" ;
+    if( DEBUG_RADIO )
+        qDebug() << "MiricsSDR::startAcquisition()" ;
 
     if( sdr_device == NULL ) {
-        qDebug() << "ERROR:RTLSDR::startAcquisition() rtlsdr_device == NULL" ;
+        qDebug() << "ERROR:MiricsSDR::startAcquisition() sdr_device == NULL" ;
         return(0);
     }
 
@@ -171,11 +172,11 @@ int MiricsSDR::startAcquisition() {
 
     rc = mirisdr_reset_buffer(sdr_device);
     if (rc < 0) {
-         qDebug() << "ERROR:RTLSDR::startAcquisition() rtlsdr_reset_buffer" ;
+        qDebug() << "ERROR:MiricsSDR::startAcquisition() mirisdr_reset_buffer" ;
         return(0);
     }
     if( DEBUG_RADIO )
-        qDebug() << "RTLSDR::startAcquisition() sem_post" ;
+        qDebug() << "MiricsSDR::startAcquisition() sem_post" ;
     xn_1.re = 0 ;
     xn_1.im = 0 ;
     yn_1.re = 0 ;
@@ -222,40 +223,43 @@ int MiricsSDR::processData( unsigned char *buf, uint32_t len  ) {
 
     TYPECPX *OutBuf = (TYPECPX*)malloc( sample_count * sizeof(TYPECPX) );
     if( OutBuf == NULL ) {
-          qDebug() << "MALLOC ???? int MIRISDR::processData " ;
-          return(0);
+        qDebug() << "MALLOC ???? int MIRISDR::processData " ;
+        return(0);
     }
     for( int i=0 ; i < sample_count ; i++ ) {
         int j = 2*i ;
         I =  (float)rawsamples[j  ] * 1.0/32767.0f   ;
         Q =  (float)rawsamples[j+1] * 1.0/32767.0f   ;
 #ifdef USE_DC_REMOVAL
-          // DC
-          // y[n] = x[n] - x[n-1] + alpha * y[n-1]
-          // see http://peabody.sapp.org/class/dmp2/lab/dcblock/
-          tmp.re = I - xn_1.re + ALPHA_DC * yn_1.re ;
-          tmp.im = Q - xn_1.im + ALPHA_DC * yn_1.im ;
+        // DC
+        // y[n] = x[n] - x[n-1] + alpha * y[n-1]
+        // see http://peabody.sapp.org/class/dmp2/lab/dcblock/
+        tmp.re = I - xn_1.re + ALPHA_DC * yn_1.re ;
+        tmp.im = Q - xn_1.im + ALPHA_DC * yn_1.im ;
 
-          xn_1.re = I ;
-          xn_1.im = Q ;
+        xn_1.re = I ;
+        xn_1.im = Q ;
 
-          yn_1.re = tmp.re ;
-          yn_1.im = tmp.im ;
-          //----
-          OutBuf[i].re = tmp.re ;
-          OutBuf[i].im = tmp.im ;
+        yn_1.re = tmp.re ;
+        yn_1.im = tmp.im ;
+        //----
+        OutBuf[i].re = tmp.re ;
+        OutBuf[i].im = tmp.im ;
 #else
-          //----
-          OutBuf[i].re = I ;
-          OutBuf[i].im = Q ;
+        //----
+        OutBuf[i].re = I ;
+        OutBuf[i].im = Q ;
 #endif
 
-      }
+    }
 
-      if( fifo->EnqueueData( (void *)OutBuf, sample_count, 0, NULL ) < 0 ) {
-          qDebug() << "MIRISDR::processData() problem - queue full ???" ;
-      }
-      return( (int)len/2 ) ;
+    if( DEBUG_RADIO )
+        qDebug() << "MiricsSDR::processData() queueing samples: " << sample_count ;
+
+    if( fifo->EnqueueData( (void *)OutBuf, sample_count, 0, NULL ) < 0 ) {
+        qDebug() << "MIRISDR::processData() problem - queue full ???" ;
+    }
+    return( (int)len ) ;
 }
 
 void MiricsSDR::sdr_device_callback(unsigned char *buf, uint32_t len, void *ctx) {
@@ -280,12 +284,11 @@ void MiricsSDR::sdr_device_callback(unsigned char *buf, uint32_t len, void *ctx)
 #define DEFAULT_ASYNC_BUF_NUMBER 4
 #define DEFAULT_BUF_LENGTH      (1<<14)
 #else
-#define DEFAULT_BULK_BUFFER     16384
-#define DEFAULT_BUF_NUMBER      8
-#define DEFAULT_ASYNC_BUF_NUMBER 8
-#define DEFAULT_BUF_LENGTH      16384
+#define DEFAULT_ASYNC_BUF_NUMBER 4
+#define DEFAULT_BUF_LENGTH      (1<<13)
 #endif
 void* miri_acquisition_thread( void *params ) {
+    int rc ;
     MiricsSDR* dev = (MiricsSDR*)params ;
     mirisdr_dev_t *sdr_device = dev->sdr_device ;
     if( DEBUG_RADIO )
@@ -298,8 +301,13 @@ void* miri_acquisition_thread( void *params ) {
 
         if( DEBUG_RADIO )
             qDebug() << "acquisition_thread() got mutex, start SDR" ;
-        mirisdr_read_async(sdr_device, dev->sdr_device_callback, params,
+
+        rc = mirisdr_read_async(sdr_device, dev->sdr_device_callback, params,
                            DEFAULT_ASYNC_BUF_NUMBER, DEFAULT_BUF_LENGTH);
+        if( rc != 0 ) {
+            qDebug() << "Could not start device !" ;
+            MiricsSDR::m_stop = true ;
+        }
         if(MiricsSDR::m_stop )
             break ;
     }

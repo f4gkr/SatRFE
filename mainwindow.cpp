@@ -254,6 +254,7 @@ void MainWindow::setRadio(RxDevice *device ) {
 
     // adapt GUI to SDR
     if( device->deviceHasSingleGainStage() ) {
+        gain_rx->setScale( device->getMinGain() ,device->getMaxGain() );
         gain_rx->setValue( device->getRxGain()  );
     } else {
         gain_rx->setVisible(false);

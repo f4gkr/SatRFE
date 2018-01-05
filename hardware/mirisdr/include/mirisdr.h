@@ -27,7 +27,7 @@ extern "C" {
 // 0=no debug
 // 1=gain and frequency info.
 // 2=extended debug
-#define MIRISDR_DEBUG 0
+#define MIRISDR_DEBUG 1
 
 #include <stdint.h>
 //#include "mirisdr_export.h"

@@ -252,9 +252,9 @@ void Controller::process( TYPECPX*samples, int L ) {
     int rc,pushback_samples ;
     int left = L ;
 
-    //qDebug() << "Controller::process() L=" << L ;
+    qDebug() << "Controller::process() L=" << L ;
 
-    if( (L > FFT_SPECTRUM_LEN ) && (spectrum_interleave>0)){
+    if( (L >= FFT_SPECTRUM_LEN ) && (spectrum_interleave>0)){
         spectrum_interleave_value-- ;
         if( spectrum_interleave_value <= 0 ) {
             generateSpectrum(samples);
