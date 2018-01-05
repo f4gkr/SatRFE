@@ -1,5 +1,8 @@
 #include "rxhardwareselector.h"
 #include "common/constants.h"
+#include "hardware/funcube/funcube.h"
+#include "hardware/rtlsdr.h"
+#include "hardware/miricsCpp.h"
 
 RxHardwareSelector::RxHardwareSelector(QObject *parent) : QObject(parent)
 {
@@ -9,6 +12,12 @@ RxHardwareSelector::RxHardwareSelector(QObject *parent) : QObject(parent)
 RxDevice *RxHardwareSelector::getReceiver() {
     FUNCube *fcdboard = NULL ;
     RTLSDR *dongle = NULL ;
+    MiricsSDR *rsp = NULL ;
+
+    rsp = new MiricsSDR(0);
+    if( rsp->getDeviceCount() > 0 ) {
+        return( rsp );
+    }
 
     fcdboard = new FUNCube();
     if( fcdboard->getDeviceCount() > 0 ) {

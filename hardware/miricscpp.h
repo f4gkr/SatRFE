@@ -29,7 +29,7 @@
 //authors and should not be interpreted as representing official policies, either expressed
 //or implied, of Sylvain AZARIAN F4GKR.
 //==========================================================================================
-#include "hardware/rtlsdr/rtl-sdr.h"
+#include "mirisdr/include/mirisdr.h"
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
@@ -39,11 +39,12 @@
 #include "common/datatypes.h"
 #include "common/samplefifo.h"
 
-class RTLSDR : public RxDevice
+
+class MiricsSDR: public RxDevice
 {
 public:
-    RTLSDR();
-    RTLSDR( int select_index = 0 );
+    MiricsSDR();
+    MiricsSDR( int select_index = 0 );
     int getDeviceCount() { return( device_count ) ; }
     char* getHardwareName();
 
@@ -69,10 +70,11 @@ public:
     qint64 getMin_HWRx_CenterFreq() ;
     qint64 getMax_HWRx_CenterFreq() ;
 
-    static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx) ;
-    rtlsdr_dev_t *rtlsdr_device ;
+    static void sdr_device_callback(unsigned char *buf, uint32_t len, void *ctx) ;
+    mirisdr_dev_t *sdr_device ;
     sem_t mutex;
     static  bool m_stop ;
+
 private:
 
     char *hardwareName ;
@@ -93,7 +95,7 @@ private:
     uint64_t min_tuner_freq ;
     uint64_t max_tuner_freq ;
 
-     int processData( unsigned char *buf, uint32_t len ) ;
+     int processData(unsigned char *buf, uint32_t len ) ;
 };
 
 #endif // RTLSDR_H

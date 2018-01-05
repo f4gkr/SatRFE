@@ -3,8 +3,7 @@
 
 #include <QObject>
 #include "hardware/rxdevice.h"
-#include "hardware/funcube/funcube.h"
-#include "hardware/rtlsdr.h"
+
 
 class RxHardwareSelector : public QObject
 {

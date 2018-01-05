@@ -32,7 +32,7 @@ QT       += core gui multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 
-TARGET = picsatRF
+TARGET = picSqueal
 TEMPLATE = app
 
 DEFINES += BUILD_DATE='"\\\"$(shell  date +\"%Y%m%d\")\\\""'
@@ -46,7 +46,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 include( qwt/qwt.pri )
 include( httpserver/httpserver.pri)
 
-LIBS +=  -lusb-1.0 -lpthread -lrtlsdr -lfftw3f -lm -lzmq
+LIBS +=  -lusb-1.0 -lpthread -lfftw3f -lm -lzmq
 
 win32 {
     INCLUDEPATH += C:/msys64/usr/include
@@ -55,7 +55,8 @@ win32 {
     LIBS += -lgps -lhidapi-hidraw
 }
 
-SOURCES += main.cpp\
+SOURCES += \
+    main.cpp\
     mainwindow.cpp \
     ui/freqctrl.cpp \
     hardware/rtlsdr.cpp \
@@ -83,9 +84,33 @@ SOURCES += main.cpp\
     hardware/funcube/funcube.cpp \
     hardware/rxdevice.cpp \
     hardware/audio/audioinput.cpp \
-    hardware/rxhardwareselector.cpp
+    hardware/rxhardwareselector.cpp \
+    hardware/rtlsdr/librtlsdr.c \
+    hardware/rtlsdr/tuner_e4k.c \
+    hardware/rtlsdr/tuner_fc0012.c \
+    hardware/rtlsdr/tuner_fc0013.c \
+    hardware/rtlsdr/tuner_fc2580.c \
+    hardware/rtlsdr/tuner_r82xx.c \
+    hardware/mirisdr/src/adc.c \
+    hardware/mirisdr/src/async.c \
+    hardware/mirisdr/src/devices.c \
+    hardware/mirisdr/src/gain.c \
+    hardware/mirisdr/src/hard.c \
+    hardware/mirisdr/src/libmirisdr.c \
+    hardware/mirisdr/src/reg.c \
+    hardware/mirisdr/src/soft.c \
+    hardware/mirisdr/src/streaming.c \
+    hardware/mirisdr/src/sync.c \
+    hardware/mirisdr/src/convert/252_s16.c \
+    hardware/mirisdr/src/convert/336_s16.c \
+    hardware/mirisdr/src/convert/384_s16.c \
+    hardware/mirisdr/src/convert/504_s8.c \
+    hardware/mirisdr/src/convert/504_s16.c \
+    hardware/mirisdr/src/convert/base.c \
+    hardware/miricscpp.cpp
 
-HEADERS  += mainwindow.h \
+HEADERS  += \
+    mainwindow.h \
     ui/freqctrl.h \
     hardware/rtlsdr.h \
     common/QLogger.h \
@@ -114,4 +139,21 @@ HEADERS  += mainwindow.h \
     hardware/funcube/funcube.h \
     hardware/rxdevice.h \
     hardware/audio/audioinput.h \
-    hardware/rxhardwareselector.h
+    hardware/rxhardwareselector.h \
+    hardware/rtlsdr/reg_field.h \
+    hardware/rtlsdr/rtl-sdr.h \
+    hardware/rtlsdr/rtlsdr_i2c.h \
+    hardware/rtlsdr/tuner_e4k.h \
+    hardware/rtlsdr/tuner_fc0012.h \
+    hardware/rtlsdr/tuner_fc0013.h \
+    hardware/rtlsdr/tuner_fc2580.h \
+    hardware/rtlsdr/tuner_r82xx.h \
+    hardware/mirisdr/src/async.h \
+    hardware/mirisdr/src/constants.h \
+    hardware/mirisdr/src/gain.h \
+    hardware/mirisdr/src/hard.h \
+    hardware/mirisdr/src/soft.h \
+    hardware/mirisdr/src/structs.h \
+    hardware/mirisdr/include/mirisdr.h \
+    hardware/mirisdr/include/mirisdr_export.h \
+    hardware/miricscpp.h
