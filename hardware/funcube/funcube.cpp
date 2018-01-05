@@ -47,13 +47,14 @@ FUNCube::FUNCube() {
     fcd = NULL ;
     ppm_error = 0 ;
 
-    audio_input = new AudioInput( "hw:CARD=HD,DEV=0", 96000*2 ) ;
-    //audio_input = new AudioInput( "default", 96000*2 ) ;
+    //audio_input = new AudioInput( "hw:CARD=HD,DEV=0", 96000*2 ) ;
+    audio_input = new AudioInput( "FUNcube", 96000*2 ) ;
 
 
     sampling_rate = audio_input->getSampleRate() ;
-    if( sampling_rate == 0 ) {
+    if( sampling_rate < 0 ) {
         delete audio_input ;
+        audio_input = NULL ;
         return ;
     }
 }

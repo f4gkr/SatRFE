@@ -80,7 +80,7 @@ AudioInput::AudioInput(QString inputName, int desired_sr )
 
     }
 
-
+    m_samplingRate = -1 ;
 }
 
 bool AudioInput::startAudio() {

@@ -1,5 +1,5 @@
-#ifndef RTLSDR_H
-#define RTLSDR_H
+#ifndef MIRICSCPPSDR_H
+#define MIRICSCPPSDR_H
 
 //==========================================================================================
 // + + +   This Software is released under the "Simplified BSD License"  + + +
@@ -98,4 +98,4 @@ private:
      int processData(unsigned char *buf, uint32_t len ) ;
 };
 
-#endif // RTLSDR_H
+#endif // MIRICSCPPSDR_H

@@ -99,7 +99,7 @@ private:
     qint64 centerFreq ; // FCD has 1Khz resolution  - freq stored in KHZ
     float gainMin ;
     float gainMax ;
-    uint32_t sampling_rate ; // current sampling rate
+    int sampling_rate ; // current sampling rate
 
     static hid_device *fcdOpen(void) ;
     static void fcdClose(hid_device *phd);
