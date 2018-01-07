@@ -28,8 +28,6 @@
 //==========================================================================================
 #include "mainwindow.h"
 #include <QWidget>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QPushButton>
 #include <QDesktopWidget>
 #include <QApplication>
@@ -84,7 +82,7 @@ MainWindow::MainWindow(QWidget *parent)
     // center right
     QWidget *cr_widget = new QWidget;
     cr_widget->setMaximumWidth(170);
-    QVBoxLayout *crlayout = new QVBoxLayout;
+    crlayout = new QVBoxLayout;
     cr_widget->setLayout(crlayout);
     crlayout->setContentsMargins( 1,1,1,1);
     crlayout->setAlignment(Qt::AlignLeft | Qt::AlignTop  );
@@ -105,7 +103,6 @@ MainWindow::MainWindow(QWidget *parent)
     gain_rx->setScale(0,40);
     gain_rx->setValue(10);
     crlayout->addWidget(gain_rx);
-
     cb_layout->addWidget( cr_widget);
 
     // Waterfall display
@@ -261,14 +258,15 @@ void MainWindow::setRadio(RxDevice *device ) {
         gain_rx->setValue( device->getRxGain()  );
     } else {
         gain_rx->setVisible(false);
+        if( radio->getDisplayWidget() != NULL ) {
+              crlayout->addWidget(  radio->getDisplayWidget() );
+        }
     }
 
     GlobalConfig& gc = GlobalConfig::getInstance() ;
     mainFDisplay->setFrequency(gc.cRX_FREQUENCY);
-
-
-
 }
+
 
 void MainWindow::setWebService( WebService *service ) {
     this->webservice = service ;

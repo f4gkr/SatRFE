@@ -30,12 +30,11 @@
 #include <QDebug>
 
 
-#define TBUFF_LEN (65536*2)
 
 AudioInput::AudioInput(QString inputName, int desired_sr )
 {
     closing = false ;
-    outgoing_fifo = new SampleFifo();
+    fifo = new SampleFifo();
     m_samplingRate = 0 ;
     xn_1.im = xn_1.re = 0 ;
     yn_1.im = yn_1.re = 0 ;
@@ -48,17 +47,17 @@ AudioInput::AudioInput(QString inputName, int desired_sr )
     format.setSampleType(QAudioFormat::SignedInt);
     inputDevice = NULL ;
 
-    buff_len  = 2 * TBUFF_LEN * sizeof(short int);
-    audio_buff = (short int *)malloc( buff_len );
     wr_pos = 0 ;
+    OutBuf = NULL ;
+    buf_len= 16*1024 ;
 
     foreach (const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput)) {
         QString deviceName = deviceInfo.deviceName();
 
-        qDebug() << "interface audio" << deviceName ;
+        qDebug() << "Available (detected) audio interface :" << deviceName ;
 
         if( deviceName.indexOf( inputName ) > 0 ) {
-            qDebug() << "Device name: " << deviceInfo.deviceName();
+            qDebug() << "Selected device name: " << deviceInfo.deviceName();
             QList<int> rates = deviceInfo.supportedSampleRates() ;
             for( int i=0 ; i < rates.size() ; i++ ) {
                 int ssr = rates.at(i);
@@ -70,8 +69,6 @@ AudioInput::AudioInput(QString inputName, int desired_sr )
                 audio = new QAudioInput( deviceInfo, format, this );
                 audio->setVolume(1);
                 connect( audio, SIGNAL(stateChanged(QAudio::State)), this, SLOT(stateChanged(QAudio::State)));
-                //audio->setBufferSize( 1024 );
-                //audio->setNotifyInterval(1);
                 m_samplingRate = audio->format().sampleRate() ;
                 qDebug() << "sample rate set to " << m_samplingRate ;
                 return ;
@@ -130,10 +127,6 @@ void AudioInput::getIQCorrectionFactors( TYPEREAL *gainI,
     *crossGain = AmPhCCCC ;
 }
 
-#define BUFF_LEN (4096)
-#define ALPHA_DC (0.996)
-
-
 qint64 AudioInput::readData(char* data, qint64 maxLen)
 {
     Q_UNUSED(data);
@@ -141,55 +134,61 @@ qint64 AudioInput::readData(char* data, qint64 maxLen)
     return 0;
 }
 
+#define ALPHA_DC (0.999)
+#define USE_DC_REMOVAL
 qint64 AudioInput::writeData(const char *data, qint64 len)
 {
-    TYPEREAL I,Q ;
-    TYPECPX* buff ;
-    int nbytes = (2*sizeof(short int)) ;
-    char *src = (char *)data ;
-    qint64 remain = len ;
+    TYPECPX tmp ;
+    float I,Q ;
+    int16_t *rawsamples = (int16_t *)data ;
+    int sample_count = len / (sizeof(int16_t) * 2) ;
 
-    //qDebug() << "AudioInput::writeData" << len ;
-    qint64 room_left = buff_len - wr_pos ;
-    short int *wr = audio_buff ;
-    wr += wr_pos ;
-    if( room_left >= remain ) {
-        //qDebug() << "AudioInput::writeData adding data to audio_buff : " << len ;
-        memcpy( (void *)wr, (void *)src, remain );
-        wr_pos += remain ;
-        remain = 0 ;
+    if( OutBuf == NULL ) {
+        // allocate new buffer
+        OutBuf = (TYPECPX*)malloc( buf_len * sizeof(TYPECPX) );
+        wr_pos = 0 ;
     }
 
-    //qDebug() << "AudioInput::writeData" << room_left << wr_pos << remain;
+    if( OutBuf == NULL ) {
+        qDebug() << "MALLOC ???? int MIRISDR::processData " ;
+        return(0);
+    }
 
-    int nsample_pairs = wr_pos / nbytes ;
-    if( nsample_pairs > 16384 ) {
-        buff = (TYPECPX *)malloc( nsample_pairs*sizeof( TYPECPX ));
-        for( int i=0 ; i < nsample_pairs ; i++ ) {
-            int j=2*i ;
-            I = ((TYPEREAL)audio_buff[j  ])/32768.0 ;
-            Q = ((TYPEREAL)audio_buff[j+1])/32768.0 ;
-            buff[i].re = I ;
-            buff[i].im = Q ;
+    for( int i=0 ; i < sample_count ; i++ ) {
+        int j = 2*i ;
+        I =  (float)rawsamples[j  ] * 1.0/32767.0f   ;
+        Q =  (float)rawsamples[j+1] * 1.0/32767.0f   ;
+#ifdef USE_DC_REMOVAL
+        // DC
+        // y[n] = x[n] - x[n-1] + alpha * y[n-1]
+        // see http://peabody.sapp.org/class/dmp2/lab/dcblock/
+        tmp.re = I - xn_1.re + ALPHA_DC * yn_1.re ;
+        tmp.im = Q - xn_1.im + ALPHA_DC * yn_1.im ;
+
+        xn_1.re = I ;
+        xn_1.im = Q ;
+
+        yn_1.re = tmp.re ;
+        yn_1.im = tmp.im ;
+        //----
+        OutBuf[wr_pos].re = tmp.re ;
+        OutBuf[wr_pos].im = tmp.im ;
+#else
+        //----
+        OutBuf[wr_pos].re = I ;
+        OutBuf[wr_pos].im = Q ;
+#endif
+        wr_pos++ ;
+        if( wr_pos == buf_len ) {
+            // our buffer is full, send it
+            //qDebug() << "pushing " << buf_len << " audio samples" ;
+            if( fifo->EnqueueData( (void *)OutBuf, buf_len, 0, NULL ) < 0 ) {
+                qDebug() << "AudioInput::writeData() problem - queue full ???" ;
+            }
+            OutBuf = (TYPECPX*)malloc( buf_len * sizeof(TYPECPX) );
+            wr_pos = 0 ;
         }
-
-        qint64 bytes_consumed = nbytes * nsample_pairs ;
-        wr_pos -= bytes_consumed ;
-        src += bytes_consumed ;
-
-        qDebug() << "AudioInput::writeData" << room_left << wr_pos << remain << nsample_pairs;
-        if( outgoing_fifo->EnqueueData( (void *)buff, nsample_pairs, 0, NULL ) < 0 ) {
-            qDebug() << " AudioInput::run() queue size !!!!" ;
-        }
     }
 
-    if( remain > 0 ) {
-        room_left = buff_len - wr_pos ;
-        wr = audio_buff ;
-        wr += wr_pos ;
-        //qDebug() << "AudioInput::writeData adding last data to audio_buff : " << remain ;
-        memcpy( (void *)wr, (void *)src, remain );
-        wr_pos += remain ;
-    }
     return(len) ;
 }

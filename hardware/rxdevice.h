@@ -35,6 +35,8 @@ public:
     virtual SampleFifo *getFIFO() { return( fifo ); }
 
     virtual bool deviceHasSingleGainStage() { return( true ) ; }
+    virtual QWidget* getDisplayWidget() {return(NULL) ; }
+
     virtual int setRxGain(float db );
     virtual float getRxGain();
     virtual float getMinGain() ;

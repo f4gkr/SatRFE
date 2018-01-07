@@ -2,6 +2,10 @@
 // + + +   This Software is released under the "Simplified BSD License"  + + +
 // Copyright 2014 F4GKR Sylvain AZARIAN . All rights reserved.
 // SPECIAL THANKS TO F6BHI FOR LETTING ME TESTING THE FUNCUBE
+// This code contains portions from QtHID
+//  Copyright (C) 2010  Howard Long, G6LVB
+//  CopyRight (C) 2011  Alexandru Csete, OZ9AEC
+//                      Mario Lorenz, DL5MLO
 //
 //Redistribution and use in source and binary forms, with or without modification, are
 //permitted provided that the following conditions are met:
@@ -46,6 +50,14 @@ FUNCube::FUNCube() {
     gainMin = 0 ;
     fcd = NULL ;
     ppm_error = 0 ;
+
+    // Test if we have a fcd device here
+     hid_device *phd = fcdOpen();
+     if( phd == NULL ) {
+          return ;
+     }
+     fcdBlReset();
+     fcdClose(phd);
 
     //audio_input = new AudioInput( "hw:CARD=HD,DEV=0", 96000*2 ) ;
     audio_input = new AudioInput( "FUNcube", 96000*2 ) ;
@@ -173,10 +185,31 @@ double FUNCube::getppmError()  {
     return(ppm_error);
 }
 
-
+/***************************************************************************
+ *  This file is part of Qthid.
+ *
+ *  Copyright (C) 2010  Howard Long, G6LVB
+ *  CopyRight (C) 2011  Alexandru Csete, OZ9AEC
+ *                      Mario Lorenz, DL5MLO
+ *
+ *  Qthid is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  Qthid is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with Qthid.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ***************************************************************************/
 //-----------------------------------------------------------------
 const unsigned short _usVID=0x04D8;  /*!< USB vendor ID. */
 const unsigned short _usPID=0xFB56;  /*!< USB product ID. */
+const unsigned short _usPID2=0xFB31;  /*!< USB product ID. */
 
 hid_device *FUNCube::fcdOpen(void)
 {
@@ -184,7 +217,7 @@ hid_device *FUNCube::fcdOpen(void)
     hid_device *phd=NULL;
     char *pszPath=NULL;
 
-    phdi=hid_enumerate(_usVID,_usPID);
+    phdi=hid_enumerate(_usVID,_usPID2);
     if (phdi==NULL)
     {
         return NULL; // No FCD device found
@@ -378,6 +411,59 @@ FCD_MODE_ENUM FUNCube::fcdAppGetParam(unsigned char u8Cmd, unsigned char *pu8Dat
     return FCD_MODE_BL;
 }
 
+/** \brief Reset FCD to application mode.
+ * \return FCD_MODE_NONE
+ *
+ * This function is used to switch the FCD from bootloader mode
+ * into application mode.
+ */
+FCD_MODE_ENUM FUNCube::fcdBlReset(void)
+{
+    hid_device *phd=NULL;
+    //    unsigned char aucBufIn[65];
+    unsigned char aucBufOut[65];
+
+    phd = fcdOpen();
+
+    if (phd == NULL)
+    {
+        return FCD_MODE_NONE;
+    }
+
+    // Send an BL reset command
+    aucBufOut[0] = 0; // Report ID, ignored
+    aucBufOut[1] = FCD_CMD_BL_RESET;
+    hid_write(phd, aucBufOut, 65);
+
+    /** FIXME: hid_read() will hang due to a pthread_cond_wait() never returning.
+      It seems that the read_callback() in hid-libusb.c will never receive any
+      data during the reconfiguration. Since the same logic works in the native
+      windows application, it could be a libusb thing. Anyhow, since the value
+      returned by this function is not used, we may as well jsut skip the hid_read()
+      and return FME_NONE.
+      Correct switch from BL to APP mode can be observed in /var/log/messages (linux)
+      (when in bootloader mode the device version includes 'BL')
+      */
+    /*
+       memset(aucBufIn,0xCC,65); // Clear out the response buffer
+       hid_read(phd,aucBufIn,65);
+       if (aucBufIn[0]==FCDCMDBLRESET && aucBufIn[1]==1)
+       {
+       FCDClose(phd);
+       phd=NULL;
+       return FME_BL;
+       }
+       FCDClose(phd);
+       phd=NULL;
+       return FME_APP;
+       */
+
+    fcdClose(phd);
+    phd = NULL;
+
+    return FCD_MODE_NONE;
+
+}
 
 QWidget* FUNCube::getDisplayWidget() {
     static FCDWidget* result = NULL ;

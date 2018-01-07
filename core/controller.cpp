@@ -83,9 +83,15 @@ void Controller::hamming_window(double *win,  int win_size)
 }
 
 void Controller::setRadio(RxDevice *radio) {
+    int radio_rate = radio->getRxSampleRate() ;
+
     this->radio = radio ;
-    channelizer = new OverlapSave( radio->getRxSampleRate(), DEMODULATOR_SAMPLERATE );
-    channelizer->configure( 128*1024, 16384 );
+    channelizer = new OverlapSave( radio_rate, DEMODULATOR_SAMPLERATE );
+    if( radio_rate > 1e6 ) {
+        channelizer->configure( 128*1024, 16384 );
+    } else {
+        channelizer->configure( 32*1024, 16384 );
+    }
 
     connect( this, SIGNAL(radioStart()), radio, SLOT(SLOT_start()), Qt::QueuedConnection );
     connect( this, SIGNAL(radioStop()), radio, SLOT(SLOT_stop()), Qt::QueuedConnection );

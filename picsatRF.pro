@@ -27,21 +27,14 @@
 #or implied, of Sylvain AZARIAN F4GKR.
 #==========================================================================================
 #-------------------------------------------------
+TARGET = picSqueal
+TEMPLATE = app
 
 QT       += core gui multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-
-TARGET = picSqueal
-TEMPLATE = app
-
 DEFINES += BUILD_DATE='"\\\"$(shell  date +\"%Y%m%d\")\\\""'
 
-# The following define makes your compiler emit warnings if you use
-# any feature of Qt which as been marked as deprecated (the exact warnings
-# depend on your compiler). Please consult the documentation of the
-# deprecated API in order to know how to port your code away from it.
-DEFINES += QT_DEPRECATED_WARNINGS
 
 include( qwt/qwt.pri )
 include( httpserver/httpserver.pri)
@@ -107,7 +100,8 @@ SOURCES += \
     hardware/mirisdr/src/convert/504_s8.c \
     hardware/mirisdr/src/convert/504_s16.c \
     hardware/mirisdr/src/convert/base.c \
-    hardware/miricscpp.cpp
+    hardware/miricscpp.cpp \
+    ui/gkpushbutton.cpp
 
 HEADERS  += \
     mainwindow.h \
@@ -156,4 +150,5 @@ HEADERS  += \
     hardware/mirisdr/src/structs.h \
     hardware/mirisdr/include/mirisdr.h \
     hardware/mirisdr/include/mirisdr_export.h \
-    hardware/miricscpp.h
+    hardware/miricscpp.h \
+    ui/gkpushbutton.h

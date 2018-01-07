@@ -31,6 +31,8 @@
 
 #include <QMainWindow>
 #include <QLCDNumber>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 #include "common/tuningpolicy.h"
 #include "ui/plotter.h"
 #include "hardware/rxdevice.h"
@@ -39,6 +41,7 @@
 #include "ui/indicatorwidget.h"
 #include "ui/qcustomplot.h"
 #include "ui/gkdial.h"
+#include "ui/gkpushbutton.h"
 #include "webinterface/webservice.h"
 #include "common/constants.h"
 
@@ -83,6 +86,7 @@ private:
     CFreqCtrl *mainFDisplay ;
     gkDial *fft_update_rate ;
     gkDial *gain_rx ;
+    QVBoxLayout *crlayout  ;
     gkDial *detection_threshold ;
     QLCDNumber *zuluDisplay ;
 

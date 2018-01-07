@@ -1,6 +1,6 @@
 //==========================================================================================
 // + + +   This Software is released under the "Simplified BSD License"  + + +
-// Copyright 2014 F4GKR Sylvain AZARIAN . All rights reserved.
+// Copyright 2014-2017 F4GKR Sylvain AZARIAN . All rights reserved.
 //
 //Redistribution and use in source and binary forms, with or without modification, are
 //permitted provided that the following conditions are met:
@@ -26,71 +26,29 @@
 //authors and should not be interpreted as representing official policies, either expressed
 //or implied, of Sylvain AZARIAN F4GKR.
 //==========================================================================================
-#ifndef AUDIOINPUT_H
-#define AUDIOINPUT_H
+
+#ifndef GKPUSHBUTTON_H
+#define GKPUSHBUTTON_H
 
 #include <QObject>
-#include <QtMultimedia/QAudioFormat>
-#include <QtMultimedia/QAudioInput>
-#include <QIODevice>
-#include "common/samplefifo.h"
-#include "common/datatypes.h"
+#include <QToolButton>
 
-
-class AudioInput: public QIODevice
+class gkPushButton : public QToolButton
 {
     Q_OBJECT
 public:
-    AudioInput(QString inputName, int desired_sr  );
-    ~AudioInput() {
-        closing = true ;
-    }
+    explicit gkPushButton(QWidget *parent = 0);
+    explicit gkPushButton(const QString &text, QWidget *parent=0);
 
-    SampleFifo *getFifo() {
-        return( fifo );
-    }
+    void setStatus( bool on );
+    bool isOn() { return( m_on ); }
 
-    void setIQCorrectionFactors( TYPEREAL gainI, TYPEREAL gainQ,
-                                 TYPEREAL crossGain );
-    void getIQCorrectionFactors( TYPEREAL *gainI,
-                                 TYPEREAL *gainQ,
-                                 TYPEREAL *crossGain );
+signals:
 
-
-    void clearIQCorrection() {
-        AmPhAAAA = 1.0 ;
-        AmPhCCCC = 0.0 ;
-        AmPhDDDD = 1.0 ;
-    }
-
-    bool startAudio() ;
-    void stopAudio() ;
-
-    int getSampleRate() { return( m_samplingRate ) ; }
-
-private slots:
-    void stateChanged(QAudio::State state);
+    void valueChanged(int v );
 
 private:
-    bool closing ;
-    int m_samplingRate ;
-    SampleFifo* fifo ;
-    QAudioFormat format;
-    QAudioInput *audio ;
-    QIODevice *inputDevice;
-
-    TYPECPX *OutBuf ;
-    int wr_pos ;
-    int buf_len ;
-
-    TYPECPX xn_1, yn_1 ;
-    TYPEREAL AmPhAAAA ;
-    TYPEREAL AmPhCCCC ;
-    TYPEREAL AmPhDDDD ;
-
-    void run();
-    virtual qint64 readData(char* data, qint64 maxLen);
-    virtual qint64 writeData(const char* data, qint64 len);
+    bool m_on ;
 };
 
-#endif // AUDIOINPUT_H
+#endif // GKPUSHBUTTON_H
