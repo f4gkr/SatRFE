@@ -59,7 +59,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QComboBox>
-
+#include "funcube.h"
 
 /** \brief Data definition for combo box items.
   * This data structure represents an item in a combo box used for
@@ -87,14 +87,14 @@ typedef struct {
 } COMBO_STRUCT;
 
 
-typedef void (_fcdAppSetParam)(unsigned char , unsigned char *, unsigned char );
+
 
 class FCDWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit FCDWidget(QWidget *parent = 0);
-    void setCallback( _fcdAppSetParam *call_fcdAppSetParam ) ;
+    explicit FCDWidget( FUNCube *device, QWidget *parent = 0);
+
 signals:
 
 public slots:
@@ -120,7 +120,9 @@ private:
     void populateCombo(QComboBox *box, int nIdxDefault, const COMBO_ITEM_STRUCT *pcis);
     void populateCombos();
     void fcdAppSetParam(unsigned char u8Cmd, unsigned char *pu8Data, unsigned char u8len);
-    _fcdAppSetParam *call_fcdAppSetParam ;
+
+    FUNCube* device ;
+
     QComboBox *comboBoxLNAGain ;
     QComboBox *comboBoxLNAEnhance;
     QComboBox *comboBoxBand;

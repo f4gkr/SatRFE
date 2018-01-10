@@ -48,6 +48,7 @@
  *  along with Qthid.  If not, see <http://www.gnu.org/licenses/>.
  *
  ***************************************************************************/
+#include "funcube.h"
 #include "fcdwidget.h"
 #include <QDebug>
 
@@ -357,7 +358,7 @@ static QString CBlabels[] = {
 } ;
 
 
-FCDWidget::FCDWidget(QWidget *parent) :
+FCDWidget::FCDWidget( FUNCube *device, QWidget *parent) :
     QWidget(parent)
 {
     QVBoxLayout *plugin_layout = new QVBoxLayout( this );
@@ -446,7 +447,7 @@ FCDWidget::FCDWidget(QWidget *parent) :
     connect( comboBoxIFGain5, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxIFGain5_activated(int)));
     connect( comboBoxIFGain6, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxIFGain6_activated(int)));
 
-    call_fcdAppSetParam = NULL ;
+    this->device = device ;
 }
 
 
@@ -576,12 +577,8 @@ void FCDWidget::on_comboBoxIFGain6_activated(int index)
 
 
 void FCDWidget::fcdAppSetParam(unsigned char u8Cmd, unsigned char *pu8Data, unsigned char u8len) {
-    qDebug() << "FCDWidget::fcdAppSetParam" <<  u8Cmd ;
-    if( call_fcdAppSetParam != NULL ) {
-        (*call_fcdAppSetParam)(u8Cmd,pu8Data,u8len);
+    //qDebug() << "FCDWidget::fcdAppSetParam" <<  u8Cmd ;
+    if( device != NULL ) {
+        device->fcdAppSetParam(u8Cmd,pu8Data,u8len);
     }
-}
-
-void FCDWidget::setCallback(_fcdAppSetParam *call_fcdAppSetParam ) {
-     this->call_fcdAppSetParam = call_fcdAppSetParam ;
 }

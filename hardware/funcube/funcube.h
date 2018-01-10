@@ -30,6 +30,9 @@
 #ifndef FUNCUBE_H
 #define FUNCUBE_H
 
+#include <QThread>
+#include <QComboBox>
+#include <hidapi/hidapi.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
@@ -39,9 +42,6 @@
 #include "common/samplefifo.h"
 #include "hardware/audio/audioinput.h"
 
-#include <QThread>
-#include <QComboBox>
-#include <hidapi/hidapi.h>
 
 /** \brief FCD mode enumeration. */
 typedef enum {
@@ -54,7 +54,7 @@ typedef enum {
 class FUNCube : public RxDevice
 {
 public:
-    explicit FUNCube();
+    explicit FUNCube( bool pro = false );
     int getDeviceCount() ;
 
     void close();
@@ -92,6 +92,9 @@ public:
     double getppmError() ;
 
     QWidget* getDisplayWidget();
+    FCD_MODE_ENUM fcdAppSetParam(unsigned char u8Cmd, unsigned char *pu8Data, unsigned char u8len);
+    FCD_MODE_ENUM fcdAppGetParam(unsigned char u8Cmd, unsigned char *pu8Data, unsigned char u8len);
+
 private:
     char *hardwareName ;
     double ppm_error ;
@@ -101,14 +104,15 @@ private:
     float gainMax ;
     int sampling_rate ; // current sampling rate
 
-    static hid_device *fcdOpen(void) ;
-    static void fcdClose(hid_device *phd);
-    static FCD_MODE_ENUM fcdAppSetFreqkHz(int nFreq ) ;
-    static FCD_MODE_ENUM fcdAppSetParam(unsigned char u8Cmd, unsigned char *pu8Data, unsigned char u8len);
-    static FCD_MODE_ENUM fcdAppGetParam(unsigned char u8Cmd, unsigned char *pu8Data, unsigned char u8len);
-    static FCD_MODE_ENUM fcdBlReset(void) ;
-    hid_device *fcd ;
+    QWidget* gui ;
 
+    hid_device *fcdOpen(void) ;
+    void fcdClose(hid_device *phd);
+
+    FCD_MODE_ENUM fcdAppSetFreqkHz(int nFreq ) ;
+    FCD_MODE_ENUM fcdBlReset(void) ;
+    hid_device *fcd ;
+    unsigned short _PID ;
 
 };
 

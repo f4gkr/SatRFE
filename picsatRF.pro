@@ -1,6 +1,6 @@
 #==========================================================================================
 # + + +   This Software is released under the "Simplified BSD License"  + + +
-# Copyright 2014-2017 F4GKR Sylvain AZARIAN . All rights reserved.
+# Copyright F4GKR Sylvain AZARIAN . All rights reserved.
 #
 #Redistribution and use in source and binary forms, with or without modification, are
 #permitted provided that the following conditions are met:
@@ -70,7 +70,6 @@ SOURCES += \
     ui/plotter.cpp \
     ui/bookmarks.cpp \
     webinterface/webservice.cpp \
-    dsp/activity.cpp \
     common/tuningpolicy.cpp \
     dsp/zmqserver.cpp \
     hardware/funcube/fcdwidget.cpp \
@@ -124,7 +123,6 @@ HEADERS  += \
     ui/plotter.h \
     ui/bookmarks.h \
     webinterface/webservice.h \
-    dsp/activity.h \
     common/datatypes.h \
     common/tuningpolicy.h \
     dsp/zmqserver.h \

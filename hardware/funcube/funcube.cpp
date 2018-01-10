@@ -31,6 +31,35 @@
 //authors and should not be interpreted as representing official policies, either expressed
 //or implied, of Sylvain AZARIAN F4GKR.
 //==========================================================================================
+
+/***************************************************************************
+ *  This file is part of Qthid.
+ *
+ *  Copyright (C) 2010  Howard Long, G6LVB
+ *  CopyRight (C) 2011  Alexandru Csete, OZ9AEC
+ *                      Mario Lorenz, DL5MLO
+ *
+ *  Qthid is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  Qthid is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with Qthid.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ***************************************************************************/
+
+const unsigned short _usVID=0x04D8;  /*!< USB vendor ID. */
+const unsigned short _usPID=0xFB56;  /*!< USB product ID. */
+const unsigned short _usPID2=0xFB31;  /*!< USB product ID. */
+//-----------------------------------------------------------------
+
+
 #include "funcube.h"
 #include "fcdhidcmd.h"
 #include <QDebug>
@@ -40,7 +69,7 @@
 
 #define FCD_DEBUG (1)
 
-FUNCube::FUNCube() {
+FUNCube::FUNCube(bool pro) {
     hardwareName = (char *)malloc( 64 * sizeof( char ));
     sprintf( hardwareName, "%s", "FUNcube");
     audio_input = NULL ;
@@ -50,8 +79,13 @@ FUNCube::FUNCube() {
     gainMin = 0 ;
     fcd = NULL ;
     ppm_error = 0 ;
+    gui = NULL ;
 
     // Test if we have a fcd device here
+     _PID = _usPID ;
+     if( pro ) {
+         _PID = _usPID2 ;
+     }
      hid_device *phd = fcdOpen();
      if( phd == NULL ) {
           return ;
@@ -83,6 +117,8 @@ void FUNCube::close() {
     }
     if( audio_input != NULL )
         audio_input->stopAudio();
+    if( gui != NULL )
+        delete gui ;
 }
 
 
@@ -185,6 +221,7 @@ double FUNCube::getppmError()  {
     return(ppm_error);
 }
 
+
 /***************************************************************************
  *  This file is part of Qthid.
  *
@@ -206,18 +243,13 @@ double FUNCube::getppmError()  {
  *  along with Qthid.  If not, see <http://www.gnu.org/licenses/>.
  *
  ***************************************************************************/
-//-----------------------------------------------------------------
-const unsigned short _usVID=0x04D8;  /*!< USB vendor ID. */
-const unsigned short _usPID=0xFB56;  /*!< USB product ID. */
-const unsigned short _usPID2=0xFB31;  /*!< USB product ID. */
-
 hid_device *FUNCube::fcdOpen(void)
 {
     struct hid_device_info *phdi=NULL;
     hid_device *phd=NULL;
     char *pszPath=NULL;
 
-    phdi=hid_enumerate(_usVID,_usPID2);
+    phdi=hid_enumerate(_usVID, _PID);
     if (phdi==NULL)
     {
         return NULL; // No FCD device found
@@ -466,10 +498,9 @@ FCD_MODE_ENUM FUNCube::fcdBlReset(void)
 }
 
 QWidget* FUNCube::getDisplayWidget() {
-    static FCDWidget* result = NULL ;
-    if( result == NULL ) {
-        result = new FCDWidget();
-        result->setCallback( (_fcdAppSetParam*)&fcdAppSetParam );
+    if( gui == NULL ) {
+        FCDWidget *wid = new FCDWidget( this );
+        gui = (QWidget*)wid ;
     }
-    return( (QWidget*)result );
+    return( gui );
 }

@@ -1,6 +1,6 @@
 //==========================================================================================
 // + + +   This Software is released under the "Simplified BSD License"  + + +
-// Copyright 2014-2017 F4GKR Sylvain AZARIAN . All rights reserved.
+// Copyright F4GKR Sylvain AZARIAN . All rights reserved.
 //
 //Redistribution and use in source and binary forms, with or without modification, are
 //permitted provided that the following conditions are met:
@@ -58,6 +58,8 @@ RTLSDR::RTLSDR( int select_index)
     hardwareName = NULL ;
     freq_hz = 0 ;
     sampling_rate = 0 ;
+    gainMin = 1000 ;
+    gainMax = -1000 ;
 
     rc = (int)rtlsdr_get_device_count();
     if( rc < 1 ) {
@@ -151,8 +153,9 @@ RTLSDR::RTLSDR( int select_index)
         max_tuner_freq = 924e6 ;
         break ;
     }
-    if( DEBUG_RADIO )
-        qDebug() << " Tuner type:" << ttype << " min_tuner_freq=" << min_tuner_freq << " max_tuner_freq=" << max_tuner_freq ;
+
+    qDebug() << " Tuner type:" << ttype << " min_tuner_freq=" << min_tuner_freq << " max_tuner_freq=" << max_tuner_freq ;
+    qDebug() << " gain range : " << gainMin << " to " << gainMax ;
 
     rc = rtlsdr_get_usb_strings( rtlsdr_device, manufact, product, serial );
     if( rc == 0 ) {

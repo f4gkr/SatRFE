@@ -22,16 +22,24 @@ RxDevice *RxHardwareSelector::getReceiver() {
     delete rsp ;
     rsp = NULL ;
 
-    fcdboard = new FUNCube();
+    // test FUNcube pro
+    fcdboard = new FUNCube(true);
     if( fcdboard->getDeviceCount() > 0 ) {
         return(fcdboard);
     }
     delete fcdboard ;
+
+    // test normal (non pro)
+    fcdboard = new FUNCube(false);
+    if( fcdboard->getDeviceCount() > 0 ) {
+        return(fcdboard);
+    }
+
     fcdboard = NULL ;
 
     dongle = new RTLSDR(0);
     if( dongle->getDeviceCount() > 0 ) {
-        if( dongle->setRxSampleRate( SYMBOL_RATE * 200 ) < 0 ) { // sampling rate is 1.92 MHz            
+        if( dongle->setRxSampleRate( SYMBOL_RATE * 200 ) == 0 ) { // sampling rate is 1.92 MHz
             return(dongle);
         }
     }

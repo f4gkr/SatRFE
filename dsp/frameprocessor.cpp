@@ -1,6 +1,6 @@
 //==========================================================================================
 // + + +   This Software is released under the "Simplified BSD License"  + + +
-// Copyright 2014-2017 F4GKR Sylvain AZARIAN . All rights reserved.
+// Copyright F4GKR Sylvain AZARIAN . All rights reserved.
 //
 //Redistribution and use in source and binary forms, with or without modification, are
 //permitted provided that the following conditions are met:
@@ -108,6 +108,22 @@ float FrameProcessor::modulus(int i) {
     float b = (float)fftin[i][1];
     return( a*a + b*b );
 }
+
+void FrameProcessor::ac(tSComplex *start, int L) {
+    // copy PREAMBLE_LENGTH samples in FFT buffer
+    memset( (void *)fftin, 0, FFT_SIZE*sizeof(TYPECPX));
+    memcpy( (void *)fftin, start, L*sizeof(TYPECPX));
+    // X  = fft(x_pad);
+    fftwf_execute( plan );
+    // X_psd = abs(X).^2;
+    for( int i=0 ; i < FFT_SIZE ; i++ ) {
+         fftin[i][0] = modulus(i) ;
+         fftin[i][1] = 0 ;
+    }
+    // r_xx = ifft(X_psd);
+    fftwf_execute(plan_rev);
+}
+
 #define SUBSAMPLERATE (3)
 #define CX1 (.8)
 #define DEBUG_ADETECTOR (0)
@@ -146,18 +162,7 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
 
         case sSearchFrame:
             if( remaining_samples >= PREAMBLE_LENGTH ) {
-                // copy PREAMBLE_LENGTH samples in FFT buffer
-                memset( (void *)fftin, 0, FFT_SIZE*sizeof(TYPECPX));
-                memcpy( (void *)fftin, start, PREAMBLE_LENGTH*sizeof(TYPECPX));
-                // X  = fft(x_pad);
-                fftwf_execute( plan );
-                // X_psd = abs(X).^2;
-                for( int i=0 ; i < FFT_SIZE ; i++ ) {
-                     fftin[i][0] = modulus(i) ;
-                     fftin[i][1] = 0 ;
-                }
-                // r_xx = ifft(X_psd);
-                fftwf_execute(plan_rev);
+                ac(start, PREAMBLE_LENGTH );
                 //
                 double root = modulus(0);
                 A = 0 ;
@@ -169,35 +174,29 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
                 A = A / N ;
                 v = 20*log10f( A / root );
 
-//                if( v > threshold ) {
-//                    if( (L-remaining_samples) > 0 ) {
-//                        TYPECPX* cstart = start ;
-//                        cstart -= (L-remaining_samples) ;
-//                        SampleBlock *sb = new SampleBlock( cstart, (L-remaining_samples) + PREAMBLE_LENGTH );
-//                        queue.enqueue( sb );
-//                        queueSampleCount = (L-remaining_samples) + PREAMBLE_LENGTH ;
+                if( v > threshold ) {
+                    if( (L-remaining_samples) > 0 ) {
+                        TYPECPX* cstart = start ;
+                        cstart -= (L-remaining_samples) ;
+                        SampleBlock *sb = new SampleBlock( cstart, (L-remaining_samples) + PREAMBLE_LENGTH );
+                        queue.enqueue( sb );
+                        queueSampleCount = (L-remaining_samples) + PREAMBLE_LENGTH ;
 
-//                    } else {
-//                        SampleBlock *sb = new SampleBlock( start, PREAMBLE_LENGTH );
-//                        queue.enqueue( sb );
-//                        queueSampleCount = PREAMBLE_LENGTH ;
-//                    }
-//                    next_state = sFrameStart ;
-//                    emit frameDetected( v ) ;
-//                    start += PREAMBLE_LENGTH ;
-//                    remaining_samples -= PREAMBLE_LENGTH ;
-
-//                    emit newDataDetected();
-//                } else {
-                    start += PREAMBLE_LENGTH/2 - 1 ;
-                    remaining_samples -= PREAMBLE_LENGTH/2 - 1 ;
-                    // if there was a pending update request, we process it now
-                    if( m_update_noise_request > 0 ) {
-                        next_state = sMeasureNoise ;
-                        m_update_noise_request = 0 ;
-                        samples_for_powerestimation = 2*sampleRate ; // use 2 seconds of signal
+                    } else {
+                        SampleBlock *sb = new SampleBlock( start, PREAMBLE_LENGTH );
+                        queue.enqueue( sb );
+                        queueSampleCount = PREAMBLE_LENGTH ;
                     }
-                //}
+                    next_state = sFrameStart ;
+                    emit frameDetected( v ) ;
+                    start += PREAMBLE_LENGTH ;
+                    remaining_samples -= PREAMBLE_LENGTH ;
+
+                    emit newDataDetected();
+                } else {
+                    start += PREAMBLE_LENGTH/2 - 1 ;
+                    remaining_samples -= PREAMBLE_LENGTH/2 - 1 ;                    
+                }
 
                 level4display = level4display * .6 + v * .4 ;
                 subsample-- ;
@@ -220,25 +219,19 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
             if( remaining_samples >= FFT_SIZE/2) {
                 memset( (void *)fftin, 0, FFT_SIZE*sizeof(TYPECPX));
                 TYPECPX* end = start ;
-                end += remaining_samples - FFT_SIZE/2 ;
-                memcpy( (void *)fftin, end, FFT_SIZE/2*sizeof(TYPECPX));
-                // X  = fft(x_pad);
-                fftwf_execute( plan );
-                // X_psd = abs(X).^2;
-                for( int i=0 ; i < FFT_SIZE ; i++ ) {
-                     fftin[i][0] = modulus(i) ;
-                     fftin[i][1] = 0 ;
-                }
-                // r_xx = ifft(X_psd);
-                fftwf_execute(plan_rev);
+                end += remaining_samples - PREAMBLE_LENGTH ;
+                ac( end, PREAMBLE_LENGTH );
                 //
                 double root = modulus(0);
+                A = 0 ;
+                N = 0 ;
+                for( int i=0 ; i < FFT_SIZE/2 ; i++) {
+                    A += modulus(i);
+                    N++ ;
+                }
+                A = A / N ;
+                v = 20*log10f( A / root );
 
-                A = CX1*A + (1-CX1)*(20*log10(modulus(1*OVERSAMPLE_RATIO)/root));
-                B = CX1*B + (1-CX1)*(20*log10(modulus(3*OVERSAMPLE_RATIO)/root));
-                C = CX1*C + (1-CX1)*(20*log10(modulus(11*OVERSAMPLE_RATIO)/root));
-                v = A + B + C ;
-                qDebug() << v ;
                 if( v < threshold ) {
                     next_state = sFrameEnds ;
                     sb->markAsLastBlock(); // this is the end of the sequence
