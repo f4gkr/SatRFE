@@ -361,7 +361,7 @@ static QString CBlabels[] = {
 FCDWidget::FCDWidget( FUNCube *device, QWidget *parent) :
     QWidget(parent)
 {
-    QVBoxLayout *plugin_layout = new QVBoxLayout( this );
+    QGridLayout *plugin_layout = new QGridLayout( this );
     plugin_layout->setAlignment( Qt::AlignHCenter );
     plugin_layout->setContentsMargins( 0, 0, 0, 0 );
 
@@ -369,12 +369,6 @@ FCDWidget::FCDWidget( FUNCube *device, QWidget *parent) :
     Pal.setColor(QPalette::Background, QColor(0x60,0x60,0x60,0xFF));
     setAutoFillBackground(true);
     setPalette(Pal);
-
-    QLabel *t = new QLabel();
-    t->setStyleSheet("QLabel { color : yellow; }");
-    t->setText("FUNcube Dongle");
-    plugin_layout->addWidget( t );
-
 
     //connect( cb_band, SIGNAL(currentIndexChanged(int)), this, SLOT(SLOT_selectBand(int)));
 
@@ -414,6 +408,7 @@ FCDWidget::FCDWidget( FUNCube *device, QWidget *parent) :
     _acs[15].pComboBox= comboBoxIFGain6;
 
     int lbl = 0 ;
+    int rc = 0 ;
     COMBO_STRUCT *pcs = _acs;
     while (pcs->pacis!=NULL)
     {
@@ -421,13 +416,17 @@ FCDWidget::FCDWidget( FUNCube *device, QWidget *parent) :
         const COMBO_ITEM_STRUCT *pcis = pcs->pacis;
         populateCombo(pcs->pComboBox, pcs->nIdxDefault, pcis);
 
+        QVBoxLayout *box = new QVBoxLayout();
         QLabel *mt = new QLabel();
         mt->setStyleSheet("QLabel { color : yellow; }");
         mt->setText( CBlabels[lbl++]);
-        plugin_layout->addWidget( mt );
-
-        plugin_layout->addWidget( pcs->pComboBox );
+        box->addWidget( mt );
+        box->addWidget( pcs->pComboBox );
+        QWidget *wbox = new QWidget() ;
+        wbox->setLayout( box );
+        plugin_layout->addWidget( wbox, rc%8, rc/8, 1, 1);
         pcs++;
+        rc++ ;
     }
 
     connect( comboBoxLNAGain, SIGNAL(currentIndexChanged(int)), this, SLOT(on_comboBoxLNAGain_activated(int)));

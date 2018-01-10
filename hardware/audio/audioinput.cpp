@@ -49,7 +49,7 @@ AudioInput::AudioInput(QString inputName, int desired_sr )
 
     wr_pos = 0 ;
     OutBuf = NULL ;
-    buf_len= 16*1024 ;
+    buf_len= 8*1024 ;
 
     foreach (const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput)) {
         QString deviceName = deviceInfo.deviceName();
@@ -108,6 +108,8 @@ void AudioInput::stateChanged(QAudio::State state) {
     case QAudio::SuspendedState: qDebug() << "SuspendedState" ; break ;
     case QAudio::StoppedState: qDebug() << "StoppedState" ; break ;
     case QAudio::IdleState: qDebug() << "IdleState" ; break ;
+    default: qDebug() << "other state" ; break ;
+
     }
 }
 

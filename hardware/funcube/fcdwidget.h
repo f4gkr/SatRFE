@@ -55,6 +55,7 @@
 #include <QWidget>
 #include <QPalette>
 #include <QVBoxLayout>
+#include <QGridLayout>
 #include <QColor>
 #include <QPushButton>
 #include <QLabel>

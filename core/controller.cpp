@@ -30,6 +30,7 @@
 #include "common/samplefifo.h"
 #include "hardware/gpdsd.h"
 #include "common/constants.h"
+#include <QApplication>
 
 #define STEP_SIZE 16384
 #define FFT_SPECTRUM_LEN 4096
@@ -222,7 +223,7 @@ void Controller::run() {
             }
             samples = (TYPECPX *)fifo->DequeueData( &sample_count, 0,  NULL, true );
             if( (samples == NULL ) || (sample_count==0)) {
-                qDebug() << "Controller::run()  sample_count==0" ;
+                QApplication::processEvents();
                 continue ;
             }
             process( samples, sample_count );

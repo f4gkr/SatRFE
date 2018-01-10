@@ -81,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // center right
     QWidget *cr_widget = new QWidget;
-    cr_widget->setMaximumWidth(170);
+    cr_widget->setMaximumWidth(250);
     crlayout = new QVBoxLayout;
     cr_widget->setLayout(crlayout);
     crlayout->setContentsMargins( 1,1,1,1);
