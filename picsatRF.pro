@@ -150,3 +150,6 @@ HEADERS  += \
     hardware/mirisdr/include/mirisdr_export.h \
     hardware/miricscpp.h \
     ui/gkpushbutton.h
+
+RESOURCES += \
+    resources/picsat.qrc

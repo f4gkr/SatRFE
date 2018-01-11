@@ -200,8 +200,13 @@ MainWindow::MainWindow(QWidget *parent)
     msg_count = 0 ;
 
     pwlayout->addWidget( levelplot );
-
     vlayout->addWidget( plotWidget );
+
+    QAction *quit = new QAction( tr("&Quit"), this);
+    QMenu *file;
+    file = menuBar()->addMenu( tr("&File"));
+    file->addAction(quit);
+    connect(quit, SIGNAL(triggered()), this, SLOT(endProgram()));
 
 
     setCentralWidget(center_widget);
@@ -235,7 +240,7 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::setRadio(RxDevice *device ) {
     radio = device ;
 
-    setWindowTitle( QString::fromLocal8Bit( device->getHardwareName() ));
+    setWindowTitle( "PicSat using : " + QString::fromLocal8Bit( device->getHardwareName() ));
 
     mainFDisplay->setup( 11,
                          radio->getMin_HWRx_CenterFreq() ,
@@ -284,6 +289,10 @@ void MainWindow::SLOT_userTunesFreqWidget(qint64 newFrequency) {
 void MainWindow::SLOT_NewDemodFreq(qint64 freq, qint64 delta){
     Controller& ctrl = Controller::getInstance() ;
     ctrl.setRxCenterFrequency( freq+delta );
+
+    mainFDisplay->blockSignals(true);
+    mainFDisplay->resetToFrequency( freq+delta);
+    mainFDisplay->blockSignals(false);
 }
 
 // start SDR pressed
@@ -415,4 +424,14 @@ void MainWindow::SLOT_NewSNRThreshold( float value ) {
 void MainWindow::SLOT_gpsdAsError( int code ) {
     GPSD& gpsd= GPSD::getInstance() ;
     gpsd.processError(code);
+}
+
+
+void MainWindow::endProgram() {
+     radio->stopAcquisition() ;
+     GPSD& gpsd= GPSD::getInstance() ;
+     gpsd.shutdown();
+     Controller& ctrl = Controller::getInstance() ;
+     ctrl.close();
+     exit(0);
 }

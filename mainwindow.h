@@ -78,6 +78,7 @@ private slots:
     void SLOT_NewSNRThreshold( float value );
 
     void SLOT_gpsdAsError( int code );
+    void endProgram();
 
 private:
     int received_frame ;

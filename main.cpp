@@ -44,6 +44,18 @@
 #include "httpserver/httplistener.h"
 #include "webinterface/webservice.h"
 
+#define SPLASH_NAME ":/logo.png"
+
+class I : public QThread
+{
+public:
+    static void sleep(unsigned int secs) {
+        for( unsigned int z=0 ; z < secs*10 ; z ++ ) {
+            qApp->processEvents();
+            QThread::msleep(100);
+        }
+    }
+};
 
 int main(int argc, char *argv[])
 {
@@ -53,6 +65,13 @@ int main(int argc, char *argv[])
     HttpListener* webserver;
     QApplication a(argc, argv);
     QApplication::setStyle(QStyleFactory::create("plastique"));
+
+    QPixmap pixmap( SPLASH_NAME );
+    QSplashScreen splash(pixmap);
+    splash.show();
+    a.processEvents();
+    splash.showMessage( a.translate( "QObject", "Loading..."),  Qt::AlignLeft | Qt::AlignTop, Qt::white);
+    I::sleep(1);
 
     // load configuration file
     GlobalConfig& global = GlobalConfig::getInstance() ;
@@ -92,6 +111,7 @@ int main(int argc, char *argv[])
     MainWindow *w = new MainWindow();
     w->setRadio( radio );
     w->setWebService( ws );
+    splash.finish(w);
     w->show();
 
     return a.exec();
