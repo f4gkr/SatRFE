@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 
     MainWindow *w = new MainWindow();
     w->setRadio( radio );
-    //w->setWebService( ws );
+    w->setWebService( ws );
     splash.finish(w);
     w->show();
 
