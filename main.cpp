@@ -102,11 +102,11 @@ int main(int argc, char *argv[])
     control.start();
 
     // start web server
-//    QSettings settings( QApplication::applicationDirPath() + "/" + QString(CONFIG_FILENAME), QSettings::IniFormat);
-//    settings.beginGroup("WebServer");
-//    WebService *ws = new WebService(&a);
-//    webserver = new HttpListener( &settings, ws, &a);
-//    control.setWebService( ws );
+    QSettings settings( QApplication::applicationDirPath() + "/" + QString(CONFIG_FILENAME), QSettings::IniFormat);
+    settings.beginGroup("WebServer");
+    WebService *ws = new WebService(&a);
+    webserver = new HttpListener( &settings, ws, &a);
+    control.setWebService( ws );
 
     MainWindow *w = new MainWindow();
     w->setRadio( radio );
