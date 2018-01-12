@@ -174,7 +174,7 @@ void Controller::run() {
     GlobalConfig& gc = GlobalConfig::getInstance() ;
 
     qDebug() << "Controller::run() " ;
-    processor->moveToThread(this);
+    //processor->moveToThread(this);
 
     while( !m_stop ) {
 
