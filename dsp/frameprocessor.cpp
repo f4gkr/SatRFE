@@ -167,7 +167,7 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
                 double root = modulus(0);
                 A = 0 ;
                 N = 0 ;
-                for( int i=0 ; i < FFT_SIZE/2 ; i++) {
+                for( int i=1 ; i < FFT_SIZE/2 ; i++) {
                     A += modulus(i);
                     N++ ;
                 }
@@ -225,7 +225,7 @@ int FrameProcessor::processDataAD( TYPECPX* IQsamples, int L , int sampleRate ) 
                 double root = modulus(0);
                 A = 0 ;
                 N = 0 ;
-                for( int i=0 ; i < FFT_SIZE/2 ; i++) {
+                for( int i=1 ; i < FFT_SIZE/2 ; i++) {
                     A += modulus(i);
                     N++ ;
                 }

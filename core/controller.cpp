@@ -174,6 +174,7 @@ void Controller::run() {
     GlobalConfig& gc = GlobalConfig::getInstance() ;
 
     qDebug() << "Controller::run() " ;
+    processor->moveToThread(this);
 
     while( !m_stop ) {
 
@@ -224,8 +225,10 @@ void Controller::run() {
             samples = (TYPECPX *)fifo->DequeueData( &sample_count, 0,  NULL, true );
             if( (samples == NULL ) || (sample_count==0)) {
                 QApplication::processEvents();
+                msleep(1);
                 continue ;
             }
+            //qDebug() << " fifo " << fifo->getSize() ;
             process( samples, sample_count );
             if( rx_tune_request > 0 ) {
                 gc.getTuneParameters( rx_tune_request, tp );
