@@ -81,7 +81,7 @@
 #define RX_OFFSET (1e3) /* how far away from rx center we shift to avoid DC component */
 
 #define CONFIG_FILENAME "picsatrfe.conf"
-#define DEFAULT_RX_FREQUENCY (436.4708*1e6)
+#define DEFAULT_RX_FREQUENCY (435.525*1e6)
 
 #define FFTRATE_MAX (10)
 

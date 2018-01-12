@@ -63,7 +63,7 @@ MiricsSDR::MiricsSDR( int select_index)
     sampling_rate = 0 ;
     wr_pos = 0 ;
     OutBuf = NULL ;
-    buf_len= 64*1024 ;
+    buf_len= 32*1024 ;
 
     rc = (int)mirisdr_get_device_count();
     if( rc < 1 ) {
@@ -78,7 +78,7 @@ MiricsSDR::MiricsSDR( int select_index)
     }
 
     if( sdr_device == NULL ) {
-        qDebug() << "Failed to open rtlsdr device" <<  dev_index ;
+        qDebug() << "Failed to open mirics device" <<  dev_index ;
         dev_index = -1 ;
         return ;
     }
@@ -298,8 +298,6 @@ void MiricsSDR::sdr_device_callback(unsigned char *buf, uint32_t len, void *ctx)
  * @return
  */
 #ifndef _WIN32
-#define DEFAULT_BULK_BUFFER     (1<<14)
-#define DEFAULT_BUF_NUMBER      32
 #define DEFAULT_ASYNC_BUF_NUMBER 4
 #define DEFAULT_BUF_LENGTH      (1<<14)
 #else
